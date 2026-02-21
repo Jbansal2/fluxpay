@@ -100,7 +100,7 @@ const Stories = () => {
     };
 
     return (
-        <section className="w-full py-25 px-6" style={{ background: "hsl(0 0% 6%)" }}>
+        <section className="w-full py-25 px-6 bg-[#1a1a1a]" >
             {/* Heading */}
             <h2 className="text-center text-5xl md:text-5xl font-bold text-foreground mb-20 font-display">
                 Over a <span className="text-primary">million</span> happy stories
