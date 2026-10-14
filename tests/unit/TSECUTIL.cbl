@@ -1,0 +1,83 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TSECUTIL.
+      *================================================================*
+      * UNIT TESTS FOR SECUTIL (PASSWORD POLICY AND HASH)              *
+      *================================================================*
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+           COPY SECPARM.
+           COPY UTWS.
+       01  WS-HASH-1                   PIC 9(09).
+
+       PROCEDURE DIVISION.
+       0000-MAIN.
+           MOVE 'SECUTIL' TO UT-SUITE
+           MOVE 'PV' TO SC-FUNCTION
+
+           MOVE 'GOOD PASSWORD ACCEPTED' TO UT-NAME
+           MOVE 'Teller99x' TO SC-PASSWORD
+           MOVE 0 TO UT-EXPECTED-NUM
+           PERFORM 1000-POLICY
+
+           MOVE 'SEVEN CHARACTERS TOO SHORT' TO UT-NAME
+           MOVE 'Abc1234' TO SC-PASSWORD
+           MOVE 10 TO UT-EXPECTED-NUM
+           PERFORM 1000-POLICY
+
+           MOVE 'DIGITS ONLY NEEDS A LETTER' TO UT-NAME
+           MOVE '12345678' TO SC-PASSWORD
+           MOVE 20 TO UT-EXPECTED-NUM
+           PERFORM 1000-POLICY
+
+           MOVE 'LETTERS ONLY NEEDS A DIGIT' TO UT-NAME
+           MOVE 'abcdefgh' TO SC-PASSWORD
+           MOVE 30 TO UT-EXPECTED-NUM
+           PERFORM 1000-POLICY
+
+           MOVE 'EMBEDDED SPACE REJECTED' TO UT-NAME
+           MOVE 'abc 12345' TO SC-PASSWORD
+           MOVE 40 TO UT-EXPECTED-NUM
+           PERFORM 1000-POLICY
+
+           MOVE 'PH' TO SC-FUNCTION
+           MOVE 'SAME PASSWORD AND SALT GIVE THE SAME HASH' TO UT-NAME
+           MOVE 'Teller99x' TO SC-PASSWORD
+           MOVE 'SALT0001'  TO SC-SALT
+           CALL 'SECUTIL' USING SEC-PARMS
+           MOVE SC-HASH TO WS-HASH-1
+           CALL 'SECUTIL' USING SEC-PARMS
+           MOVE WS-HASH-1 TO UT-EXPECTED-NUM
+           MOVE SC-HASH   TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+
+           MOVE 'DIFFERENT SALT GIVES A DIFFERENT HASH' TO UT-NAME
+           MOVE 'SALT0002' TO SC-SALT
+           CALL 'SECUTIL' USING SEC-PARMS
+           MOVE 'DIFFERENT' TO UT-EXPECTED-STR
+           IF SC-HASH = WS-HASH-1
+               MOVE 'SAME' TO UT-ACTUAL-STR
+           ELSE
+               MOVE 'DIFFERENT' TO UT-ACTUAL-STR
+           END-IF
+           PERFORM UT-ASSERT-STR
+
+           MOVE 'ONE CHARACTER CHANGES THE HASH' TO UT-NAME
+           MOVE 'SALT0001'  TO SC-SALT
+           MOVE 'Teller99y' TO SC-PASSWORD
+           CALL 'SECUTIL' USING SEC-PARMS
+           IF SC-HASH = WS-HASH-1
+               MOVE 'SAME' TO UT-ACTUAL-STR
+           ELSE
+               MOVE 'DIFFERENT' TO UT-ACTUAL-STR
+           END-IF
+           PERFORM UT-ASSERT-STR
+
+           PERFORM UT-FINISH
+           STOP RUN.
+
+       1000-POLICY.
+           CALL 'SECUTIL' USING SEC-PARMS
+           MOVE SC-RC TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM.
+
+           COPY UTPROC.

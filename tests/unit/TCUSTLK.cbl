@@ -1,0 +1,41 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TCUSTLK.
+      *================================================================*
+      * UNIT TESTS FOR CUSTLKUP WHEN THE RELATIONSHIP AND CUSTOMER     *
+      * FILES DO NOT EXIST - IT MUST ANSWER "NO HOLDER", NOT ABEND     *
+      *================================================================*
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+           COPY CLKPARM.
+           COPY UTWS.
+
+       PROCEDURE DIVISION.
+       0000-MAIN.
+           MOVE 'CUSTLKUP' TO UT-SUITE
+           MOVE 'MISSING FILES -> RC 10 (NO HOLDER)' TO UT-NAME
+           MOVE 1000000001 TO CLK-ACCT-NO
+           MOVE 'N' TO CLK-CLOSE
+           CALL 'CUSTLKUP' USING CLK-PARMS
+           MOVE 10 TO UT-EXPECTED-NUM
+           MOVE CLK-RC TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+
+           MOVE 'NAME AND PAN ARE BLANK' TO UT-NAME
+           MOVE SPACES TO UT-EXPECTED-STR
+           STRING CLK-NAME CLK-PAN DELIMITED BY SIZE
+               INTO UT-ACTUAL-STR
+           PERFORM UT-ASSERT-STR
+
+           MOVE 'A SECOND CALL STILL WORKS' TO UT-NAME
+           MOVE 1000000002 TO CLK-ACCT-NO
+           CALL 'CUSTLKUP' USING CLK-PARMS
+           MOVE 10 TO UT-EXPECTED-NUM
+           MOVE CLK-RC TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+
+           MOVE 'Y' TO CLK-CLOSE
+           CALL 'CUSTLKUP' USING CLK-PARMS
+           PERFORM UT-FINISH
+           STOP RUN.
+
+           COPY UTPROC.

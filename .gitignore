@@ -1,0 +1,15 @@
+# build output
+bin/
+build/
+*.so
+*.o
+*.c.l.h
+*.c.h
+cob*tmp/
+
+# runtime data, logs and reports (directories kept with .gitkeep)
+data/*
+!data/.gitkeep
+logs/*
+!logs/.gitkeep
+__pycache__/
