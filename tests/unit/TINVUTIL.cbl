@@ -1,0 +1,96 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TINVUTIL.
+      *================================================================*
+      * UNIT TESTS FOR INVUTIL - STOCK ISSUE AT A BRANCH               *
+      *================================================================*
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT INV-FILE ASSIGN TO 'data/INVSTOCK.DAT'
+               ORGANIZATION IS INDEXED ACCESS MODE IS RANDOM
+               RECORD KEY IS INV-KEY FILE STATUS IS WS-FS.
+       DATA DIVISION.
+       FILE SECTION.
+       FD  INV-FILE.
+           COPY INVREC.
+       WORKING-STORAGE SECTION.
+           COPY INVPARM.
+           COPY UTWS.
+       01  WS-FS                       PIC X(02).
+
+       PROCEDURE DIVISION.
+       0000-MAIN.
+           MOVE 'INVUTIL' TO UT-SUITE
+           MOVE 'NO STOCK FILE -> NOT TRACKED (RC 10)' TO UT-NAME
+           PERFORM 8000-ISSUE
+           MOVE 10 TO UT-EXPECTED-NUM
+           MOVE IV-RC TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+
+           OPEN OUTPUT INV-FILE
+           INITIALIZE INV-RECORD
+           MOVE 'DEL001' TO INV-BRANCH
+           MOVE 'CB10'   TO INV-ITEM
+           MOVE 3 TO INV-ON-HAND
+           MOVE 1 TO INV-REORDER-LEVEL
+           MOVE 20 TO INV-REORDER-QTY
+           WRITE INV-RECORD
+           CLOSE INV-FILE
+
+           MOVE 'OTHER ITEM AT THE BRANCH -> RC 10' TO UT-NAME
+           MOVE 'CB25' TO IV-ITEM
+           CALL 'INVUTIL' USING INV-PARMS
+           MOVE 10 TO UT-EXPECTED-NUM
+           MOVE IV-RC TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+
+           MOVE 'ISSUE ONE: RC 00, 2 LEFT' TO UT-NAME
+           PERFORM 8000-ISSUE
+           MOVE 2 TO UT-EXPECTED-NUM
+           MOVE IV-ON-HAND TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+           MOVE 'ABOVE REORDER LEVEL: NO FLAG' TO UT-NAME
+           MOVE 'N' TO UT-EXPECTED-STR
+           MOVE IV-REORDER-HIT TO UT-ACTUAL-STR
+           PERFORM UT-ASSERT-STR
+           MOVE 'AT REORDER LEVEL: FLAG SET' TO UT-NAME
+           PERFORM 8000-ISSUE
+           MOVE 'Y' TO UT-EXPECTED-STR
+           MOVE IV-REORDER-HIT TO UT-ACTUAL-STR
+           PERFORM UT-ASSERT-STR
+           MOVE 'ASKING FOR 2 WITH 1 LEFT -> RC 30' TO UT-NAME
+           MOVE 2 TO IV-QTY
+           CALL 'INVUTIL' USING INV-PARMS
+           MOVE 30 TO UT-EXPECTED-NUM
+           MOVE IV-RC TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+           MOVE 'LAST ONE ISSUED' TO UT-NAME
+           PERFORM 8000-ISSUE
+           MOVE ZERO TO UT-EXPECTED-NUM
+           MOVE IV-RC TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+           MOVE 'EMPTY -> RC 30' TO UT-NAME
+           PERFORM 8000-ISSUE
+           MOVE 30 TO UT-EXPECTED-NUM
+           MOVE IV-RC TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+           MOVE 'ISSUED TOTAL KEPT ON THE RECORD' TO UT-NAME
+           OPEN INPUT INV-FILE
+           MOVE 'DEL001' TO INV-BRANCH
+           MOVE 'CB10'   TO INV-ITEM
+           READ INV-FILE
+           CLOSE INV-FILE
+           MOVE 3 TO UT-EXPECTED-NUM
+           MOVE INV-ISSUED-TOTAL TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+           PERFORM UT-FINISH
+           STOP RUN.
+
+       8000-ISSUE.
+           MOVE 'DEL001' TO IV-BRANCH
+           MOVE 'CB10'   TO IV-ITEM
+           MOVE 1        TO IV-QTY
+           MOVE 'UNIT'   TO IV-REF
+           CALL 'INVUTIL' USING INV-PARMS.
+
+           COPY UTPROC.

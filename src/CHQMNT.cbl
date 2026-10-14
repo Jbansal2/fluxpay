@@ -7,7 +7,7 @@
       *            LIST LEAVES OF AN ACCOUNT, AND (MANAGER) RUN THE    *
       *            INWARD CLEARING BATCH.                              *
       * FILES    : CHQREG (INDEXED, I-O)                               *
-      * CALLS    : ACCTPOST (INQUIRY), AUDITLOG, CLRBATCH              *
+      * CALLS    : ACCTPOST (INQUIRY), AUDITLOG, CLRBATCH, INVUTIL     *
       *----------------------------------------------------------------*
       * MODIFICATION HISTORY                                           *
       * DATE       DESCRIPTION                                         *
@@ -28,6 +28,7 @@
            COPY CHQREC.
 
        WORKING-STORAGE SECTION.
+           COPY INVPARM.
            COPY COMMWS.
            COPY POSTPARM.
            COPY SESSION.
@@ -145,6 +146,25 @@
            IF WS-NEXT-CHQ-NO + WS-IN-LEAVES > 999999
                DISPLAY 'CHEQUE NUMBER SERIES EXHAUSTED.'
                EXIT PARAGRAPH
+           END-IF
+      *    THE BOOK COMES OUT OF THIS BRANCH'S STOCK
+           MOVE SES-BRANCH TO IV-BRANCH
+           IF WS-IN-LEAVES = 10
+               MOVE 'CB10' TO IV-ITEM
+           ELSE
+               MOVE 'CB25' TO IV-ITEM
+           END-IF
+           MOVE 1 TO IV-QTY
+           MOVE WS-IN-ACCT-NO TO IV-REF
+           CALL 'INVUTIL' USING INV-PARMS
+           IF IV-OUT-OF-STOCK
+               DISPLAY 'NO ' WS-IN-LEAVES '-LEAF CHEQUE BOOKS IN STOCK '
+                       'AT ' SES-BRANCH '.'
+               EXIT PARAGRAPH
+           END-IF
+           IF IV-AT-REORDER-LEVEL
+               DISPLAY 'NOTE: ' IV-ITEM ' STOCK AT REORDER LEVEL ('
+                       IV-ON-HAND ' LEFT).'
            END-IF
 
            MOVE FUNCTION CURRENT-DATE TO WS-CURRENT-DT

@@ -6,7 +6,7 @@
       *            INQUIRY, PIN CHANGE, HOTLIST, UNLOCK AFTER WRONG    *
       *            PIN ATTEMPTS AND DAILY LIMIT CHANGE.                *
       * FILES    : CARDMAST (INDEXED, I-O)                             *
-      * CALLS    : ACCTPOST (INQUIRY ONLY), CARDUTIL                   *
+      * CALLS    : ACCTPOST (INQUIRY ONLY), CARDUTIL, INVUTIL          *
       *----------------------------------------------------------------*
       * MODIFICATION HISTORY                                           *
       * DATE       DESCRIPTION                                         *
@@ -27,6 +27,8 @@
            COPY CARDREC.
 
        WORKING-STORAGE SECTION.
+           COPY INVPARM.
+           COPY SESSION.
            COPY COMMWS.
            COPY POSTPARM.
            COPY CARDPARM.
@@ -143,6 +145,17 @@
 
            PERFORM 8300-ACCEPT-NEW-PIN
            IF NOT PIN-OK
+               EXIT PARAGRAPH
+           END-IF
+      *    A CARD BLANK COMES OUT OF THIS BRANCH'S STOCK
+           MOVE SES-BRANCH    TO IV-BRANCH
+           MOVE 'DCRD'        TO IV-ITEM
+           MOVE 1             TO IV-QTY
+           MOVE WS-IN-ACCT-NO TO IV-REF
+           CALL 'INVUTIL' USING INV-PARMS
+           IF IV-OUT-OF-STOCK
+               DISPLAY 'NO DEBIT CARD BLANKS IN STOCK AT ' SES-BRANCH
+                       '.'
                EXIT PARAGRAPH
            END-IF
 
