@@ -10,6 +10,8 @@ against `cobc -tsymbols`.
 | AMLAREC | ALERT-RECORD | 94 |
 | AMLDREC | AMLDAY-RECORD | 95 |
 | AUDREC | AUD-RECORD | 99 |
+| BATMODE | CB-BATCH-MODE | 1 |
+| BRMREC | BRM-RECORD | 100 |
 | CARDREC | CARD-RECORD | 153 |
 | CASHREC | CASH-RECORD | 175 |
 | CCREC | CC-RECORD | 210 |
@@ -18,27 +20,36 @@ against `cobc -tsymbols`.
 | CHKREC | CHK-RECORD | 170 |
 | CHQREC | CHQ-RECORD | 120 |
 | CLRREC | CLR-RECORD | 72 |
+| CMPREC | CMP-RECORD | 300 |
 | COLLREC | COLL-RECORD | 94 |
 | CUSTREC | CUST-RECORD | 366 |
 | DEPREC | DEP-RECORD | 128 |
+| FDRTREC | FDRT-RECORD | 49 |
 | FRAUDREC | FRAUD-RECORD | 140 |
 | FXLOG | FXL-RECORD | 130 |
 | FXREC | FX-RECORD | 70 |
 | GLJREC | GJ-RECORD | 100 |
 | GLREC | GL-RECORD | 90 |
 | HLDREC | HLD-RECORD | 153 |
+| INVLOG | IVL-RECORD | 70 |
+| INVREC | INV-RECORD | 100 |
 | LAPPREC | LAPP-RECORD | 196 |
 | LNPROD | WS-PRODUCT-TABLE | 69 |
 | LNPROD | WS-PRODUCT-R | 69 |
 | LOANREC | LOAN-RECORD | 142 |
 | LOCKREC | LOCK-RECORD | 88 |
 | MANDREC | MAND-RECORD | 164 |
+| MFHREC | MFH-RECORD | 140 |
+| MFSREC | MFS-RECORD | 110 |
+| MFTREC | MFT-RECORD | 100 |
 | OCHQREC | OCHQ-RECORD | 181 |
 | PAYREC | PAY-RECORD | 274 |
 | PENDREC | PEND-RECORD | 165 |
 | RATEREC | RATE-RECORD | 80 |
+| SIPREC | SIP-RECORD | 80 |
 | SIREC | SI-RECORD | 142 |
 | SREQREC | SREQ-RECORD | 43 |
+| SWPREC | SWP-RECORD | 120 |
 | TDSREC | TDS-RECORD | 75 |
 | TFREC | TF-RECORD | 163 |
 | TRANREC | TRAN-RECORD | 106 |
@@ -120,6 +131,30 @@ Audit trail record (line sequential, append only).
 | 05 | AUD-ACTION | X(12) | DISPLAY | 31 | 12 |
 | 05 | AUD-KEY | X(16) | DISPLAY | 43 | 16 |
 | 05 | AUD-DETAIL | X(40) | DISPLAY | 59 | 40 |
+
+## CB-BATCH-MODE (BATMODE.cpy, 1 bytes)
+
+Run-unit wide "keep files open" switch shared by.
+
+| Level | Field | PICTURE | Usage | Offset | Length |
+|---|---|---|---|---|---|
+
+## BRM-RECORD (BRMREC.cpy, 100 bytes)
+
+Branch master (indexed, key = branch code).
+
+| Level | Field | PICTURE | Usage | Offset | Length |
+|---|---|---|---|---|---|
+| 05 | BR-CODE | X(06) | DISPLAY | 0 | 6 |
+| 05 | BR-NAME | X(30) | DISPLAY | 6 | 30 |
+| 05 | BR-IFSC | X(11) | DISPLAY | 36 | 11 |
+| 05 | BR-CITY | X(20) | DISPLAY | 47 | 20 |
+| 05 | BR-REGION | X(10) | DISPLAY | 67 | 10 |
+| 05 | BR-TYPE | X(01) | DISPLAY | 77 | 1 |
+| 05 | BR-STATUS | X(01) | DISPLAY | 78 | 1 |
+| 05 | BR-OPEN-DATE | 9(08) | DISPLAY | 79 | 8 |
+| 05 | BR-CLOSE-DATE | 9(08) | DISPLAY | 87 | 8 |
+| 05 | FILLER | X(05) | DISPLAY | 95 | 5 |
 
 ## CARD-RECORD (CARDREC.cpy, 153 bytes)
 
@@ -282,6 +317,39 @@ Inward clearing record - one cheque presented on.
 | 05 | CLR-RESULT | X(01) | DISPLAY | 68 | 1 |
 | 05 | FILLER | X(03) | DISPLAY | 69 | 3 |
 
+## CMP-RECORD (CMPREC.cpy, 300 bytes)
+
+Customer complaint / service request (indexed, key.
+
+| Level | Field | PICTURE | Usage | Offset | Length |
+|---|---|---|---|---|---|
+| 05 | CMP-NO | 9(08) | DISPLAY | 0 | 8 |
+| 05 | CMP-TYPE | X(01) | DISPLAY | 8 | 1 |
+| 05 | CMP-CATEGORY | X(04) | DISPLAY | 9 | 4 |
+| 05 | CMP-CHANNEL | X(01) | DISPLAY | 13 | 1 |
+| 05 | CMP-CUST-ID | 9(08) | DISPLAY | 14 | 8 |
+| 05 | CMP-ACCT-NO | 9(10) | DISPLAY | 22 | 10 |
+| 05 | CMP-BRANCH | X(06) | DISPLAY | 32 | 6 |
+| 05 | CMP-DESC | X(60) | DISPLAY | 38 | 60 |
+| 05 | CMP-TXN-DATE | 9(08) | DISPLAY | 98 | 8 |
+| 05 | CMP-AMOUNT | 9(09)V99 | DISPLAY | 106 | 11 |
+| 05 | CMP-OPEN-DATE | 9(08) | DISPLAY | 117 | 8 |
+| 05 | CMP-OPEN-TIME | 9(06) | DISPLAY | 125 | 6 |
+| 05 | CMP-SLA-DAYS | 9(03) | DISPLAY | 131 | 3 |
+| 05 | CMP-DUE-DATE | 9(08) | DISPLAY | 134 | 8 |
+| 05 | CMP-LEVEL | 9(01) | DISPLAY | 142 | 1 |
+| 05 | CMP-STATUS | X(01) | DISPLAY | 143 | 1 |
+| 05 | CMP-LOGGED-BY | X(08) | DISPLAY | 144 | 8 |
+| 05 | CMP-ASSIGNED-TO | X(08) | DISPLAY | 152 | 8 |
+| 05 | CMP-RESOLUTION | X(60) | DISPLAY | 160 | 60 |
+| 05 | CMP-RESOLVED-DATE | 9(08) | DISPLAY | 220 | 8 |
+| 05 | CMP-RESOLVED-BY | X(08) | DISPLAY | 228 | 8 |
+| 05 | CMP-REFUND-AMT | 9(09)V99 | DISPLAY | 236 | 11 |
+| 05 | CMP-COMP-AMT | 9(09)V99 | DISPLAY | 247 | 11 |
+| 05 | CMP-REOPEN-CNT | 9(01) | DISPLAY | 258 | 1 |
+| 05 | CMP-ESCALATED-DATE | 9(08) | DISPLAY | 259 | 8 |
+| 05 | FILLER | X(33) | DISPLAY | 267 | 33 |
+
 ## COLL-RECORD (COLLREC.cpy, 94 bytes)
 
 Collections follow-up log (line sequential, append).
@@ -350,7 +418,23 @@ Term deposit master - fd and rd (key = dep-no).
 | 05 | DEP-PAYOUT-AMT | 9(11)V99 | COMP-3 | 83 | 7 |
 | 05 | DEP-CLOSE-DATE | 9(08) | DISPLAY | 90 | 8 |
 | 05 | DEP-LIEN-LOAN-NO | 9(10) | DISPLAY | 98 | 10 |
-| 05 | FILLER | X(20) | DISPLAY | 108 | 20 |
+| 05 | DEP-SWEEP-FLAG | X(01) | DISPLAY | 108 | 1 |
+| 05 | FILLER | X(19) | DISPLAY | 109 | 19 |
+
+## FDRT-RECORD (FDRTREC.cpy, 49 bytes)
+
+Versioned fd/rd rate card (indexed, key = effective.
+
+| Level | Field | PICTURE | Usage | Offset | Length |
+|---|---|---|---|---|---|
+| 05 | FR-KEY |  | GROUP | 0 | 11 |
+| 10 | FR-EFF-DATE | 9(08) | DISPLAY | 0 | 8 |
+| 10 | FR-MAX-MONTHS | 9(03) | DISPLAY | 8 | 3 |
+| 05 | FR-GEN-RATE | 9(02)V9(04) | DISPLAY | 11 | 6 |
+| 05 | FR-SNR-RATE | 9(02)V9(04) | DISPLAY | 17 | 6 |
+| 05 | FR-SET-BY | X(08) | DISPLAY | 23 | 8 |
+| 05 | FR-SET-DATE | 9(08) | DISPLAY | 31 | 8 |
+| 05 | FILLER | X(10) | DISPLAY | 39 | 10 |
 
 ## FRAUD-RECORD (FRAUDREC.cpy, 140 bytes)
 
@@ -455,6 +539,42 @@ Account relationships (indexed, key = account +.
 | 10 | HLD-NOM-DOB | 9(08) | DISPLAY | 85 | 8 |
 | 10 | HLD-NOM-GUARDIAN | X(40) | DISPLAY | 93 | 40 |
 | 10 | FILLER | X(20) | DISPLAY | 133 | 20 |
+
+## IVL-RECORD (INVLOG.cpy, 70 bytes)
+
+Stock movement log (line sequential, append only)..
+
+| Level | Field | PICTURE | Usage | Offset | Length |
+|---|---|---|---|---|---|
+| 05 | IVL-DATE | 9(08) | DISPLAY | 0 | 8 |
+| 05 | IVL-TIME | 9(06) | DISPLAY | 8 | 6 |
+| 05 | IVL-BRANCH | X(06) | DISPLAY | 14 | 6 |
+| 05 | IVL-ITEM | X(04) | DISPLAY | 20 | 4 |
+| 05 | IVL-TYPE | X(01) | DISPLAY | 24 | 1 |
+| 05 | IVL-QTY | 9(07) | DISPLAY | 25 | 7 |
+| 05 | IVL-BAL-AFTER | 9(07) | DISPLAY | 32 | 7 |
+| 05 | IVL-REF | X(16) | DISPLAY | 39 | 16 |
+| 05 | IVL-USER | X(08) | DISPLAY | 55 | 8 |
+| 05 | FILLER | X(07) | DISPLAY | 63 | 7 |
+
+## INV-RECORD (INVREC.cpy, 100 bytes)
+
+Branch stock of security stationery (indexed, key =.
+
+| Level | Field | PICTURE | Usage | Offset | Length |
+|---|---|---|---|---|---|
+| 05 | INV-KEY |  | GROUP | 0 | 10 |
+| 10 | INV-BRANCH | X(06) | DISPLAY | 0 | 6 |
+| 10 | INV-ITEM | X(04) | DISPLAY | 6 | 4 |
+| 05 | INV-DESC | X(30) | DISPLAY | 10 | 30 |
+| 05 | INV-ON-HAND | 9(07) | DISPLAY | 40 | 7 |
+| 05 | INV-REORDER-LEVEL | 9(07) | DISPLAY | 47 | 7 |
+| 05 | INV-REORDER-QTY | 9(07) | DISPLAY | 54 | 7 |
+| 05 | INV-ON-ORDER | 9(07) | DISPLAY | 61 | 7 |
+| 05 | INV-LAST-RECEIPT | 9(08) | DISPLAY | 68 | 8 |
+| 05 | INV-LAST-ISSUE | 9(08) | DISPLAY | 76 | 8 |
+| 05 | INV-ISSUED-TOTAL | 9(07) | DISPLAY | 84 | 7 |
+| 05 | FILLER | X(09) | DISPLAY | 91 | 9 |
 
 ## LAPP-RECORD (LAPPREC.cpy, 196 bytes)
 
@@ -586,6 +706,68 @@ Nach debit mandate register (indexed, key = umrn)..
 | 05 | NM-CONSEC-BOUNCES | 9(02) | DISPLAY | 152 | 2 |
 | 05 | FILLER | X(10) | DISPLAY | 154 | 10 |
 
+## MFH-RECORD (MFHREC.cpy, 140 bytes)
+
+Customer holding of a third-party product (indexed,.
+
+| Level | Field | PICTURE | Usage | Offset | Length |
+|---|---|---|---|---|---|
+| 05 | MH-KEY |  | GROUP | 0 | 16 |
+| 10 | MH-ACCT-NO | 9(10) | DISPLAY | 0 | 10 |
+| 10 | MH-CODE | X(06) | DISPLAY | 10 | 6 |
+| 05 | MH-STATUS | X(01) | DISPLAY | 16 | 1 |
+| 05 | MH-UNITS | 9(09)V9(03) | DISPLAY | 17 | 12 |
+| 05 | MH-COST | 9(11)V99 | DISPLAY | 29 | 13 |
+| 05 | MH-FIRST-DATE | 9(08) | DISPLAY | 42 | 8 |
+| 05 | MH-LAST-TXN-DATE | 9(08) | DISPLAY | 50 | 8 |
+| 05 | MH-POLICY-NO | X(12) | DISPLAY | 58 | 12 |
+| 05 | MH-SUM-ASSURED | 9(11)V99 | DISPLAY | 70 | 13 |
+| 05 | MH-PREMIUM | 9(09)V99 | DISPLAY | 83 | 11 |
+| 05 | MH-FREQUENCY | X(01) | DISPLAY | 94 | 1 |
+| 05 | MH-NEXT-DUE | 9(08) | DISPLAY | 95 | 8 |
+| 05 | MH-PREMIUMS-PAID | 9(03) | DISPLAY | 103 | 3 |
+| 05 | MH-REDEEMED-VALUE | 9(11)V99 | DISPLAY | 106 | 13 |
+| 05 | FILLER | X(21) | DISPLAY | 119 | 21 |
+
+## MFS-RECORD (MFSREC.cpy, 110 bytes)
+
+Third-party product master (indexed, key = code) -.
+
+| Level | Field | PICTURE | Usage | Offset | Length |
+|---|---|---|---|---|---|
+| 05 | MS-CODE | X(06) | DISPLAY | 0 | 6 |
+| 05 | MS-NAME | X(30) | DISPLAY | 6 | 30 |
+| 05 | MS-TYPE | X(01) | DISPLAY | 36 | 1 |
+| 05 | MS-CATEGORY | X(04) | DISPLAY | 37 | 4 |
+| 05 | MS-RISK | X(01) | DISPLAY | 41 | 1 |
+| 05 | MS-NAV | 9(05)V9(04) | DISPLAY | 42 | 9 |
+| 05 | MS-NAV-DATE | 9(08) | DISPLAY | 51 | 8 |
+| 05 | MS-COMM-PCT | 9(02)V9(04) | DISPLAY | 59 | 6 |
+| 05 | MS-MIN-AMT | 9(09)V99 | DISPLAY | 65 | 11 |
+| 05 | MS-EXIT-LOAD-PCT | 9(01)V99 | DISPLAY | 76 | 3 |
+| 05 | MS-LOAD-DAYS | 9(03) | DISPLAY | 79 | 3 |
+| 05 | MS-STATUS | X(01) | DISPLAY | 82 | 1 |
+| 05 | MS-SET-BY | X(08) | DISPLAY | 83 | 8 |
+| 05 | FILLER | X(19) | DISPLAY | 91 | 19 |
+
+## MFT-RECORD (MFTREC.cpy, 100 bytes)
+
+Third-party product transaction log (line.
+
+| Level | Field | PICTURE | Usage | Offset | Length |
+|---|---|---|---|---|---|
+| 05 | MT-DATE | 9(08) | DISPLAY | 0 | 8 |
+| 05 | MT-ACCT-NO | 9(10) | DISPLAY | 8 | 10 |
+| 05 | MT-CODE | X(06) | DISPLAY | 18 | 6 |
+| 05 | MT-TYPE | X(01) | DISPLAY | 24 | 1 |
+| 05 | MT-AMOUNT | 9(11)V99 | DISPLAY | 25 | 13 |
+| 05 | MT-UNITS | 9(09)V9(03) | DISPLAY | 38 | 12 |
+| 05 | MT-NAV | 9(05)V9(04) | DISPLAY | 50 | 9 |
+| 05 | MT-LOAD | 9(09)V99 | DISPLAY | 59 | 11 |
+| 05 | MT-REF | X(12) | DISPLAY | 70 | 12 |
+| 05 | MT-USER | X(08) | DISPLAY | 82 | 8 |
+| 05 | FILLER | X(10) | DISPLAY | 90 | 10 |
+
 ## OCHQ-RECORD (OCHQREC.cpy, 181 bytes)
 
 Outward cheque register (indexed, key = oc-id)..
@@ -673,6 +855,25 @@ Interest rate master (indexed, key = rate-code)..
 | 05 | RATE-CHANGED-BY | X(08) | DISPLAY | 58 | 8 |
 | 05 | FILLER | X(14) | DISPLAY | 66 | 14 |
 
+## SIP-RECORD (SIPREC.cpy, 80 bytes)
+
+Systematic investment plan (indexed, key = sip no)..
+
+| Level | Field | PICTURE | Usage | Offset | Length |
+|---|---|---|---|---|---|
+| 05 | SP-NO | 9(08) | DISPLAY | 0 | 8 |
+| 05 | SP-ACCT-NO | 9(10) | DISPLAY | 8 | 10 |
+| 05 | SP-CODE | X(06) | DISPLAY | 18 | 6 |
+| 05 | SP-AMOUNT | 9(09)V99 | DISPLAY | 24 | 11 |
+| 05 | SP-DAY | 9(02) | DISPLAY | 35 | 2 |
+| 05 | SP-NEXT-DATE | 9(08) | DISPLAY | 37 | 8 |
+| 05 | SP-END-DATE | 9(08) | DISPLAY | 45 | 8 |
+| 05 | SP-STATUS | X(01) | DISPLAY | 53 | 1 |
+| 05 | SP-PAID-CNT | 9(03) | DISPLAY | 54 | 3 |
+| 05 | SP-MISSED-CNT | 9(02) | DISPLAY | 57 | 2 |
+| 05 | SP-REG-DATE | 9(08) | DISPLAY | 59 | 8 |
+| 05 | FILLER | X(13) | DISPLAY | 67 | 13 |
+
 ## SI-RECORD (SIREC.cpy, 142 bytes)
 
 Standing instruction master (indexed, key = si-id).
@@ -710,6 +911,27 @@ Statement request (line sequential queue, stmtreq)..
 | 05 | SR-DELIVERY | X(01) | DISPLAY | 26 | 1 |
 | 05 | SR-REQ-DATE | 9(08) | DISPLAY | 27 | 8 |
 | 05 | SR-REQ-BY | X(08) | DISPLAY | 35 | 8 |
+
+## SWP-RECORD (SWPREC.cpy, 120 bytes)
+
+Auto-sweep mandate (indexed, key = account no)..
+
+| Level | Field | PICTURE | Usage | Offset | Length |
+|---|---|---|---|---|---|
+| 05 | SW-ACCT-NO | 9(10) | DISPLAY | 0 | 10 |
+| 05 | SW-STATUS | X(01) | DISPLAY | 10 | 1 |
+| 05 | SW-THRESHOLD | 9(11)V99 | DISPLAY | 11 | 13 |
+| 05 | SW-FLOOR | 9(11)V99 | DISPLAY | 24 | 13 |
+| 05 | SW-UNIT | 9(11)V99 | DISPLAY | 37 | 13 |
+| 05 | SW-TENURE | 9(03) | DISPLAY | 50 | 3 |
+| 05 | SW-CREATED-DATE | 9(08) | DISPLAY | 53 | 8 |
+| 05 | SW-CREATED-BY | X(08) | DISPLAY | 61 | 8 |
+| 05 | SW-LAST-RUN-DATE | 9(08) | DISPLAY | 69 | 8 |
+| 05 | SW-OUT-COUNT | 9(05) | DISPLAY | 77 | 5 |
+| 05 | SW-OUT-AMOUNT | 9(13)V99 | DISPLAY | 82 | 15 |
+| 05 | SW-IN-COUNT | 9(05) | DISPLAY | 97 | 5 |
+| 05 | SW-IN-AMOUNT | 9(13)V99 | DISPLAY | 102 | 15 |
+| 05 | FILLER | X(03) | DISPLAY | 117 | 3 |
 
 ## TDS-RECORD (TDSREC.cpy, 75 bytes)
 

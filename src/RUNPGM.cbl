@@ -38,7 +38,10 @@
                                                  'REGRPT' 'PROVBAT'
                                                  'COLLBAT' 'FRAUDBAT'
                                                  'TFBATCH' 'AUDEXRPT'
-                                                 'STMTBAT' 'SQLINQ'.
+                                                 'STMTBAT' 'SQLINQ'
+                                                 'SWEEPBAT' 'MFBATCH'
+                                                 'INVBATCH' 'CMPBATCH'
+                                                 'BRGLBAT' 'YREND'.
        01  WS-STEP-RC                  PIC S9(04) COMP VALUE ZERO.
        01  WS-DISP-RC                  PIC 9(04).
 
@@ -55,7 +58,8 @@
                        'SQLLOAD SQLRPT LNRESET CASHRPT NACHBAT '
                        'CTSOUT CTSRET CIBILOUT TDS26AS REGRPT '
                        'PROVBAT COLLBAT FRAUDBAT TFBATCH AUDEXRPT '
-                       'STMTBAT SQLINQ'
+                       'STMTBAT SQLINQ SWEEPBAT MFBATCH INVBATCH '
+                       'CMPBATCH BRGLBAT YREND'
                MOVE 16 TO RETURN-CODE
                STOP RUN
            END-IF

@@ -599,6 +599,201 @@ check "sensitive changes listed" "RATEMNT +RATE CHANGE"
 check "activity by user" "ADMIN +ACTIONS"
 check_rc "exceptions give RC 4" 4
 
+echo "== Deposit rate card versions"
+TOMORROW="$(python3 -c 'import datetime as d; print((d.date.today()+d.timedelta(days=1)).strftime("%Y%m%d"))')"
+YESTERDAY="$(python3 -c 'import datetime as d; print((d.date.today()-d.timedelta(days=1)).strftime("%Y%m%d"))')"
+online teller1 Teller99x 0 A 2 9 9 9
+check "teller cannot set a rate card" "ONLY A MANAGER CAN SET A RATE CARD"
+online admin Admin2026x 0 A 4 6 N "" \
+       2 "$YESTERDAY" \
+       2 "$TODAY" 12 6.8 7.3 24 7.1 8.5 \
+       2 "$TODAY" 12 6.8 7.3 24 7.1 7.6 60 7.2 7.7 "" \
+       2 "$TODAY" 12 6.8 7.3 24 7.1 7.6 120 7.0 7.5 Y \
+       2 "$TOMORROW" 12 7.3 7.8 120 7.5 8.0 Y \
+       4 18 Y "" 4 18 N "$TOMORROW" 4 18 N 20200101 1 "" 3 \
+       5 "$TODAY" 5 "$TOMORROW" 3 9 9 9
+check "built-in card until one is set" "RATE  6.5000% P.A. \(BUILT-IN CARD\)"
+check "back-dated card refused" "A CARD CANNOT BE BACK-DATED"
+check "senior rate capped at 1% over general" "SENIOR RATE MUST BE 0 - 1% ABOVE GENERAL"
+check "card must end at 120 months" "LAST SLAB MUST END AT 120 MONTHS"
+check "card saved" "RATE CARD EFFECTIVE $TODAY SAVED"
+check "senior column used today" "RATE  7.6000% P.A. \(CARD EFFECTIVE $TODAY\)"
+check "future card applies from its date" "RATE  7.5000% P.A. \(CARD EFFECTIVE $TOMORROW\)"
+check "old dates keep the built-in card" "RATE  7.0000% P.A. \(BUILT-IN CARD\)"
+check "card in force listed" "      120       7.0000    7.5000"
+check "card in force cannot be withdrawn" "ONLY A FUTURE CARD CAN BE WITHDRAWN"
+check "future card withdrawn" "CARD $TOMORROW WITHDRAWN \(02 SLABS\)"
+online admin Admin2026x 8 1 1000000012 10000 12 N Y 9 9
+check "new FD booked on today's card" "RATE CARD EFFECTIVE $TODAY"
+check "new FD gets the new rate" "RATE  6.80% P.A."
+
+echo "== Sweep and overdraft against FD"
+online admin Admin2026x 0 8 1 1000000013 10000 2000 10000 12 \
+       1 1000000013 50000 60000 10000 12 \
+       1 1000000013 50000 20000 7500 12 \
+       1 1000000013 50000 20000 10000 12 \
+       1 1000000013 50000 20000 10000 12 9 9 9
+check "threshold minimum" "THRESHOLD MUST BE AT LEAST 25,000"
+check "floor below threshold" "FLOOR MUST BE BELOW THE THRESHOLD"
+check "FD unit in thousands" "FD UNIT MUST BE 5,000 OR MORE IN MULTIPLES OF 1,000"
+check "sweep registered" "AUTO-SWEEP REGISTERED FOR 1000000013"
+check "one sweep per account" "ACCOUNT ALREADY HAS AN ACTIVE SWEEP"
+run SWEEPBAT ""
+check_rc "sweep batch RC 0" 0
+check "surplus swept into FDs" "SWEPT OUT +: +[1-9][0-9]* FDS"
+SWOUT="$(grep -c "^1000000013  OUT" data/SWEEP_${TODAY}.TXT)"
+run SWEEPBAT ""
+check "same day re-run does nothing" "MANDATES PROCESSED :       0"
+online admin Admin2026x 0 8 2 1000000013 9 9 9
+check "view lists the sweep FDs" "LIVE SWEEP FDS: 0*$SWOUT "
+online admin Admin2026x 0 8 3 1000000013 1 1000000013 900000 880000 10000 12 9 9 9
+check "mandate cancelled and re-registered" "AUTO-SWEEP REGISTERED FOR 1000000013 - ABOVE 900,000.00"
+run SWEEPBAT ""
+OUT="$OUT
+$(cat data/SWEEP_${TODAY}.TXT)"
+check "balance below floor: newest sweep FD broken first" "1000000013  IN   7[0-9]{9} "
+check "sweep-in counted" "SWEPT IN +: +[1-9]"
+online admin Admin2026x 8 1 1000000024 20000 12 N Y 9 9
+FDOD="$(grep -o 'DEPOSIT 7[0-9]* OPENED' <<<"$OUT" | grep -o '7[0-9]*')"
+online admin Admin2026x 0 8 4 1000000012 "$FDOD" 4 1000000024 "$FDOD" Y \
+       4 1000000024 "$FDOD" 9 9 8 5 "$FDOD" 9 0 8 5 "$FDOD" 9 9 9
+check "OD only on current accounts" "OVERDRAFT IS ONLY FOR CURRENT ACCOUNTS"
+check "OD limit = 90% of FD at FD rate + 2%" "OD LIMIT \+18,000.00 AT  8.80% P.A."
+check "FD marked under lien" "FD $FDOD UNDER LIEN"
+check "FD cannot be pledged twice" "FD IS ALREADY UNDER LIEN \(1000000024\)"
+check "pledged FD cannot be closed" "DEPOSIT SECURES THE OVERDRAFT OF 1000000024"
+check "FD released" "FD $FDOD RELEASED"
+
+echo "== Branch stock (cheque books, cards)"
+online admin Admin2026x 0 6 2 "" CB10 2 1 20 2 "" DCRD 0 1 5 2 "" CB10 1 1 1 \
+       2 MUM002 CB10 0 1 10 1 "" 9 9 \
+       Q 1 1000000014 10 1 1000000015 10 1 1000000016 10 9 \
+       6 1 1000000014 7391 7391 9 9
+check "item put under stock control" "CB10 NOW STOCK-CONTROLLED AT HO0001"
+check "item cannot be set up twice" "CB10 IS ALREADY STOCK-CONTROLLED AT HO0001"
+check "stock position" "CB10 CHEQUE BOOK - 10 LEAVES +2 +1 +0"
+check "issue warns at reorder level" "NOTE: CB10 STOCK AT REORDER LEVEL"
+check "no stock - cheque book refused" "NO 10-LEAF CHEQUE BOOKS IN STOCK AT HO0001"
+check "no card blanks - card refused" "NO DEBIT CARD BLANKS IN STOCK AT HO0001"
+online admin Admin2026x 0 6 4 "" CB10 MUM002 5 3 "" CB10 50 "CH/2026/88" \
+       4 "" CB10 MUM002 5 5 "" CB10 3 DAMAGED 7 "" CB10 9 9 9
+check "receipt adds stock" "RECEIVED. CB10 ON HAND AT HO0001: 50"
+check "transfer needs stock" "ONLY 0 ON HAND AT HO0001"
+check "transfer between branches" "5 CB10 TRANSFERRED HO0001 -> MUM002"
+check "write-off with reason" "3 CB10 WRITTEN OFF - DAMAGED"
+check "movement history" "0000[6-9] MOVEMENT\(S\)"
+run INVBATCH ""
+check_rc "items below reorder level give RC 4" 4
+check "reorder raised automatically" "HO0001 DCRD +0 +1 +5  ORDER RAISED \(OUT\)"
+run INVBATCH ""
+check "no second order while one is open" "HO0001 DCRD .*ON ORDER - CHASE"
+
+echo "== Complaints and service requests"
+D9="$(python3 -c 'import datetime as d; print((d.date.today()-d.timedelta(days=9)).strftime("%Y%m%d"))')"
+online teller1 Teller99x 0 7 1 1000000014 C ATMF B "CASH NOT DISPENSED" "$D9" 5000 \
+       1 1000000014 C CHRG P "SMS CHARGE TWICE" \
+       1 1000000015 S SERV B "ADDRESS CHANGE" \
+       1 1000000015 C XXXX B "BAD" \
+       4 00000001 9 9 9
+check "ATM complaint logged with T+5 due date" "TICKET 00000001 LOGGED \(ATM / CARD DEBIT FAILED"
+check "service request logged" "TICKET 00000003 LOGGED \(SERVICE REQUEST"
+check "unknown category refused" "UNKNOWN CATEGORY XXXX"
+check "maker cannot resolve own ticket" "A TELLER CANNOT RESOLVE A TICKET THEY LOGGED"
+online admin Admin2026x 0 7 6 4 00000001 R "EJ SHOWS NOT DISPENSED" Y \
+       4 00000002 R "SMS CHARGE REVERSED" 20000 4 00000002 R "SMS CHARGE REVERSED" 150 \
+       5 00000002 N 5 00000001 Y 2 00000001 9 9 9
+check "pending list flags overdue" "00000001 ATMF  1 .*OVERDUE"
+check "ATM refund + Rs 100/day after T+5" "REFUND 5,000.00 \+ 4 DAY\(S\) LATE x 100 = 400.00"
+check "goodwill capped" "GOODWILL COMPENSATION IS CAPPED AT 10,000"
+check "dissatisfied customer reopens one level up" "TICKET 00000002 REOPENED AT LEVEL 2"
+check "satisfied customer closes" "TICKET 00000001 CLOSED"
+check "ticket shows refund and compensation" "REFUND +5,000.00  COMPENSATION +400.00"
+D20="$(python3 -c 'import datetime as d; print((d.date.today()+d.timedelta(days=20)).strftime("%Y%m%d"))')"
+D40="$(python3 -c 'import datetime as d; print((d.date.today()+d.timedelta(days=40)).strftime("%Y%m%d"))')"
+run CMPBATCH ""
+check_rc "nothing overdue today" 0
+run CMPBATCH "$D20"
+check_rc "escalations give RC 4" 4
+check "service request escalated to regional office" "00000003 SERV .*LEVEL 2 REGIONAL OFFICE"
+check "reopened complaint escalated to nodal officer" "00000002 CHRG .*LEVEL 3 NODAL OFFICER"
+run CMPBATCH "$D40"
+check "complaints pending over 30 days for ombudsman" "RBI OMBUDSMAN\): 1"
+OUT="$(cat data/OMBUD_${TODAY:0:6}.TXT 2>/dev/null)"
+check "monthly return written" "CUSTOMER COMPLAINTS RETURN"
+
+echo "== Mutual funds and insurance"
+online teller1 Teller99x 0 5 1 9 9 9
+check "teller cannot maintain products" "ONLY A MANAGER CAN MAINTAIN PRODUCTS"
+online admin Admin2026x 0 5 1 EQGRW1 "BLUECHIP EQUITY GROWTH" M EQTY H 50 1 1000 1 365 \
+       1 TERM01 "TERM SHIELD 1 CR" I TERM L 30 5000 \
+       1 EQGRW1 80 Y \
+       2 1000000016 EQGRW1 \
+       2 1000000003 EQGRW1 500 \
+       2 1000000003 EQGRW1 20000 Y \
+       3 1000000003 EQGRW1 100 \
+       4 1000000003 EQGRW1 300 5 12 \
+       4 1000000003 EQGRW1 1000 5 12 \
+       7 1000000003 TERM01 100000 12000 Y \
+       7 1000000003 TERM01 200000 12000 Y \
+       7 1000000003 TERM01 200000 12000 Y \
+       6 1000000003 9 9 9
+check "fund added" "PRODUCT EQGRW1 ADDED"
+check "insurance plan added" "PRODUCT TERM01 ADDED"
+check "big NAV move needs confirmation" "NAV MOVES 60.00% - CONFIRM"
+check "KYC required for third-party products" "IS NOT VERIFIED - NO THIRD-PARTY PRODUCTS|NO CUSTOMER LINKED"
+check "below minimum refused" "AMOUNT BELOW THE PRODUCT MINIMUM"
+check "units allotted at NAV" "250.000 UNITS OF EQGRW1 ALLOTTED AT NAV 80.0000"
+check "exit load inside 365 days" "100.000 UNITS REDEEMED, VALUE 8,000.00 EXIT LOAD 80.00"
+check "SIP minimum" "MINIMUM SIP IS 500 A MONTH"
+check "SIP registered" "SIP 00000001 REGISTERED"
+check "sum assured at least 10x premium" "SUM ASSURED MUST BE AT LEAST 10 x PREMIUM"
+check "policy issued with commission" "FIRST PREMIUM 12,000.00 COLLECTED \(COMMISSION 3,600.00\)"
+check "one policy per plan" "ACCOUNT ALREADY HOLDS POLICY"
+check "portfolio value" "FUNDS: COST 12,000.00  VALUE 12,000.00  GAIN 0.00"
+SIPD="$(python3 -c 'import datetime as d; t=d.date.today(); m=t.month%12+1; y=t.year+(t.month==12); print("%04d%02d05"%(y,m))')"
+run MFBATCH "$SIPD"
+check "SIP instalment invested" "SIPS INVESTED +: +1 "
+check "collections remitted to AMC / insurer" "REMITTED TO AMC/INSURERS : +[1-9]"
+run MFBATCH "$SIPD"
+check "SIP not taken twice" "SIPS INVESTED +: +0 "
+
+echo "== Branch master and inter-branch accounting"
+online teller1 Teller99x 0 B 9 9
+check "branch master hidden from tellers" "YOU ARE NOT AUTHORISED FOR THIS OPTION"
+online admin Admin2026x 0 B 4 \
+       1 PUN006 "PUNE CAMP" CB1N0PUN006 PUNE WEST B \
+       1 PUN006 "PUNE CAMP" CBIN0PUN006 PUNE WEST B \
+       1 HO0001 "HEAD OFFICE" CBIN0000001 MUMBAI WEST H \
+       1 HO0002 "SECOND HO" CBIN0HO0002 MUMBAI WEST H \
+       1 PUN006 \
+       3 KOL003 3 HO0001 3 PUN006 2 9 9 9
+check "branch codes on accounts registered" "0[0-9][1-9] BRANCH CODE\(S\) REGISTERED FROM ACCOUNTS"
+check "IFSC format checked" "IFSC MUST BE 4 LETTERS, 0, THEN 6"
+check "branch added" "BRANCH PUN006 ADDED"
+check "only one head office" "THERE IS ALREADY A HEAD OFFICE"
+check "duplicate branch refused" "BRANCH PUN006 ALREADY EXISTS"
+check "branch with accounts cannot close" "BRANCH STILL HAS [0-9]+ OPEN ACCOUNT\(S\)"
+check "head office cannot close" "THE HEAD OFFICE CANNOT BE CLOSED"
+check "empty branch closed" "BRANCH PUN006 CLOSED"
+check "branch list" "PUN006 PUNE CAMP .*CBIN0PUN006 B C"
+run BRGLBAT ""
+check_rc "inter-branch reconciled (RC 0)" 0
+check "transfer legs matched" "TRANSFERS MATCHED +: +[1-9]"
+check "IB positions net to zero" "INTER-BRANCH RECONCILED"
+OUT="$(cat data/BRGL_${TODAY}.TXT)"
+check "branch position printed" "^BANK +[0-9,]+\.[0-9]{2}"
+check "branch-pair traffic printed" "BRANCH PAIRS +FROM +TO"
+cp data/TRANLOG.DAT data/TRANLOG.BAK
+python3 - <<PY
+for l in open('data/TRANLOG.DAT'):
+    if l[36:38]=='TO' and l[22:30]=='$TODAY':
+        open('data/TRANLOG.DAT','a').write(l[:38]+'0000000012345'+l[51:]); break
+PY
+run BRGLBAT ""
+check_rc "unmatched leg gives RC 4" 4
+check "debit leg without credit listed" "UNMATCHED .*DEBIT LEG WITHOUT CREDIT"
+mv data/TRANLOG.BAK data/TRANLOG.DAT
+
 echo "== Ledger after all modules"
 run GLRPT
 check_rc "GL still balanced and reconciled (RC 0)" 0
@@ -628,7 +823,7 @@ check "job restart completes" "JOB EODJOB COMPLETE"
 echo "== Term deposit maturity with TDS, then dormancy (5 years on)"
 online admin Admin2026x 2 1 1000000011 600000 "FD MONEY" 9 \
        8 1 1000000011 500000 60 N Y 9 9
-check "FD opened" "DEPOSIT 7000000001 OPENED"
+check "FD opened" "DEPOSIT 7[0-9]{9} OPENED"
 FUTURE="$(python3 -c 'import datetime as d; t=d.date.today(); print(f"{t.year+5}{t.month:02d}{min(t.day,28)+0:02d}")')"
 FUTURE="$(python3 -c "import datetime as d; print((d.datetime.strptime('$FUTURE','%Y%m%d')+d.timedelta(days=5)).strftime('%Y%m%d'))")"
 run EODBATCH "$FUTURE"
@@ -662,6 +857,26 @@ check_rc "exceptions give RC 4" 4
 run TDS26AS "$FY"
 check "amount difference flagged" "XYZPK4321Q .*AMOUNT DIFFERS"
 rm -f data/F26AS.DAT
+
+echo "== Year-end closing"
+YE1="$(( ${TODAY:0:4} + 6 ))0331"
+YE2="$(( ${TODAY:0:4} + 7 ))0331"
+run YREND "$(( ${TODAY:0:4} + 6 ))0330"
+check_rc "year-end must be 31 March (RC 8)" 8
+run YREND "$YE1"
+check_rc "year closed (RC 0)" 0
+check "net result appropriated" "TRANSFER TO STATUTORY RESERVE|LOSS ABSORBED BY GENERAL RESERVE"
+check "income and expense closed" "NEW YEAR OPENS +WITH ZERO INCOME AND EXPENSE"
+OUT="$(cat data/YE_${YE1:0:4}.TXT)"
+check "P&L statement written" "PROFIT AND LOSS ACCOUNT - YEAR ENDED $YE1"
+run GLRPT
+check_rc "ledger balanced after closing" 0
+check "income closed to reserves" "TOTAL INCOME +0\.00"
+run YREND "$YE1"
+check_rc "same year cannot close twice (RC 8)" 8
+check "already-closed year named" "WAS ALREADY CLOSED"
+OUT="$(timeout 120 bash jobs/YEAREND.sh "$YE2" 2>&1)"; RC=$?
+check "YEAREND job completes" "JOB YEAREND COMPLETE"
 
 echo "== CICS programs (offline syntax check, no CICS here)"
 OUT="$(bash "$ROOT/cics/check.sh" 2>&1)"; RC=$?

@@ -31,6 +31,14 @@
                DISPLAY ' 2. TRADE FINANCE (BANK GUARANTEE / LC)'
                DISPLAY ' 3. FOREX AND NRI REMITTANCES'
                DISPLAY ' 4. STATEMENT REQUESTS'
+               DISPLAY ' 5. MUTUAL FUNDS AND INSURANCE'
+               DISPLAY ' 6. BRANCH STOCK (CHEQUE BOOKS / CARDS)'
+               DISPLAY ' 7. COMPLAINTS AND SERVICE REQUESTS'
+               DISPLAY ' 8. SWEEP AND OVERDRAFT AGAINST FD'
+               DISPLAY ' A. DEPOSIT RATE CARD'
+               IF SES-ADMIN
+                   DISPLAY ' B. BRANCH MASTER'
+               END-IF
                DISPLAY ' 9. BACK TO MAIN MENU'
                DISPLAY 'ENTER CHOICE: ' WITH NO ADVANCING
                ACCEPT WS-CHOICE
@@ -45,6 +53,18 @@
                    WHEN '2' CALL 'TFMNT'
                    WHEN '3' CALL 'FXMNT'
                    WHEN '4' CALL 'STMTREQ'
+                   WHEN '5' CALL 'MFMNT'
+                   WHEN '6' CALL 'INVMNT'
+                   WHEN '7' CALL 'CMPMNT'
+                   WHEN '8' CALL 'SWEEPMNT'
+                   WHEN 'A' CALL 'FDRTMNT'
+                   WHEN 'B'
+                       IF SES-ADMIN
+                           CALL 'BRMNT'
+                       ELSE
+                           DISPLAY 'YOU ARE NOT AUTHORISED FOR THIS '
+                                   'OPTION.'
+                       END-IF
                    WHEN '9' CONTINUE
                    WHEN SPACE
       *                INPUT EXHAUSTED: LEAVE AFTER 20 BLANKS

@@ -9,9 +9,13 @@ processing, MIS reports, a full-screen customer 360 view, data migration utiliti
 cards, gold loans and loans against deposits, repo-linked home loans with a rate master,
 maker-checker approvals, branch cash (vault and teller drawers), NACH mandates, outward cheque
 clearing (CTS), credit bureau and Form 26AS interface files, regulatory returns, checkpoint /
-restart for batch, a JSON API, a PostgreSQL reporting feed, JCL and CICS versions, batch job
-scripts and automated tests (end-to-end and COBOL unit tests).
-Learning project built with AI assistance.
+restart for batch, mutual fund / insurance distribution, branch stock of cheque books and cards,
+versioned deposit rate cards, complaints with SLA escalation, auto-sweep and overdraft against FD,
+branch / inter-branch accounting, financial year-end closing, a JSON API, a PostgreSQL reporting
+feed, JCL and CICS versions, batch job scripts and automated tests (end-to-end and COBOL unit tests).
+
+Learning project built with AI assistance - see [CONTRIBUTING.md](CONTRIBUTING.md) and
+[CHANGELOG.md](CHANGELOG.md).
 
 ## Quick start
 
@@ -42,7 +46,7 @@ make run          # main menu; first run asks you to set the ADMIN password
 | L | LOCKMNT  | all (add lockers: manager) | Locker allotment, visits, surrender, vacancies |
 | V | ACCTSCR  | all | Full-screen customer 360 view (SCREEN SECTION; F3 to exit) |
 | M | CASHMNT  | all (chest / issue cash: manager) | Vault by denomination, issue cash to tellers, teller drawer and cash tally |
-| 0 | MOREMENU | all (fraud: manager) | Second page: fraud alerts (FRAUDMNT), trade finance BG/LC (TFMNT), forex and NRI remittances (FXMNT), statement requests (STMTREQ) |
+| 0 | MOREMENU | all (see below) | Second page of the menu (table below) |
 | Z | NACHMNT  | all (reactivate: manager) | NACH debit mandates: register (UMRN), inquiry, cancel, reactivate |
 | K | CCMNT    | all (issue/limit: manager) | Credit cards: issue (BIN 9991, Luhn), purchase/cash auth, payment, refund, block |
 | O | SECLOAN  | all (gold rate: manager) | Gold loan (75% LTV) and loan against FD (90%, lien on the deposit) |
@@ -63,6 +67,21 @@ make run          # main menu; first run asks you to set the ADMIN password
 | U | USERMNT  | admin | Users, password reset/unlock, disable, audit trail viewer |
 | P | USERMNT  | all | Change own password |
 
+Second page (main menu option 0):
+
+| Option | Program | Who | Purpose |
+|--------|---------|-----|---------|
+| 1 | FRAUDMNT | manager | Fraud alerts: review, mark genuine / fraud (fraud freezes the account) |
+| 2 | TFMNT    | all | Bank guarantees and letters of credit (margin, commission + GST, drawings, invocation) |
+| 3 | FXMNT    | all | Forex rates, inward / outward remittances, LRS and NRO limits, TCS |
+| 4 | STMTREQ  | all | Statement for any period, e-mailed or posted by STMTBAT |
+| 5 | MFMNT    | all (products / NAV: manager) | Mutual funds (units at NAV, exit load, SIPs) and insurance policies; KYC and senior-citizen suitability checks |
+| 6 | INVMNT   | all (start / write off: manager) | Branch stock of cheque books, card blanks and PIN mailers: receipts, transfers, write-offs, orders, history |
+| 7 | CMPMNT   | all | Complaints and service requests: SLA due date by category, assign, resolve (ATM refund + RBI Rs 100/day compensation), reopen |
+| 8 | SWEEPMNT | all | Auto-sweep mandates (threshold / floor / FD unit) and overdraft against FD (90% of the FD, FD rate + 2%) |
+| A | FDRTMNT  | all (new card: manager) | Versioned FD / RD rate cards with a senior-citizen column; quote for any booking date |
+| B | BRMNT    | admin | Branch master: IFSC check, one head office, close only when empty |
+
 Roles: **T** teller, **M** manager, **A** admin. The menu only shows what the role may use, and a
 refused option is written to the audit trail.
 
@@ -71,7 +90,9 @@ refused option is written to the audit trail.
 `RUNPGM` runs one batch program as user `BATCH`, audits job start/end and returns the step RC to the
 shell. Only batch programs are allowed: INTCALC, EODBATCH, CHGBATCH, CLRBATCH, MISRPT, DATAUTIL,
 TESTGEN, GLRPT, AMLRPT, TDSRPT, PAYBATCH, SIBATCH, CCBATCH, GOLDREVL, APIGW,
-SQLLOAD, SQLRPT, LNRESET, CASHRPT, NACHBAT, CTSOUT, CTSRET, CIBILOUT, TDS26AS, REGRPT.
+SQLLOAD, SQLRPT, LNRESET, CASHRPT, NACHBAT, CTSOUT, CTSRET, CIBILOUT, TDS26AS, REGRPT, PROVBAT,
+COLLBAT, FRAUDBAT, TFBATCH, AUDEXRPT, STMTBAT, SQLINQ, SWEEPBAT, MFBATCH, INVBATCH, CMPBATCH,
+BRGLBAT, YREND. Answers to prompts (run date, menu choice) come from stdin.
 
 | Program | Does |
 |---------|------|
@@ -89,13 +110,19 @@ SQLLOAD, SQLRPT, LNRESET, CASHRPT, NACHBAT, CTSOUT, CTSRET, CIBILOUT, TDS26AS, R
 | TFBATCH  | Expires BGs / LCs, returns margin, prints the contingent liability register |
 | STMTBAT  | Monthly statements for every active account (SORT by account + posting order) and queued requests; mail / print queues |
 | AUDEXRPT | Audit exceptions: repeated failed sign-ons, refused access, after-hours activity, sensitive changes |
-| SQLINQ   | Account and name enquiry against the PostgreSQL copy (parameterised cursors) | Answers to prompts (run date, menu choice)
-come from stdin.
+| SQLINQ   | Account and name enquiry against the PostgreSQL copy (parameterised cursors) |
+| SWEEPBAT | Auto-sweep: balance above the threshold into FDs of one unit each; below the floor, newest sweep FDs broken first (no penalty) |
+| MFBATCH  | SIP instalments (3 misses cancel), insurance renewals (lapse after 30 days' grace), remittance of collections to AMCs / insurers, month-end trail commission |
+| INVBATCH | Branch stock at or below reorder level: automatic orders, out-of-stock list |
+| CMPBATCH | Complaint escalation past the SLA (branch → regional → nodal officer) and the monthly complaints return with tickets over 30 days (RBI Ombudsman) |
+| BRGLBAT  | Branch positions from the sub-ledgers and inter-branch accounts: TO / TI legs matched by SORT, IB positions must net to zero |
+| YREND    | Financial year-end: income and expense closed to P&L, 25% of profit to statutory reserve, rest to general reserve; once per year |
 
 | Job script | Steps |
 |------------|-------|
-| `jobs/EODJOB.sh [date]` | control totals → clearing → payment settlement → standing instructions → EOD → card batch → gold revaluation → reconcile → GL (abends if unbalanced) → MIS |
-| `jobs/MONTHEND.sh [date]` | interest → charges → AML report → TDS certificates → reconcile → GL → CSV export |
+| `jobs/EODJOB.sh [date]` | control totals → clearing → payment settlement → NACH → outward cheques → standing instructions → sweep → EOD → repo reset → card batch → gold revaluation → mutual funds / insurance → trade finance → cash position → reconcile → GL (abends if unbalanced) → fraud → collections → stock reorder → complaints → inter-branch → MIS |
+| `jobs/MONTHEND.sh [date]` | interest → charges → AML report → TDS certificates → reconcile → GL → CSV export → bureau file → regulatory returns → provisioning → statements → audit exceptions |
+| `jobs/YEAREND.sh YYYY0331` | GL check → year-end closing (YREND) → GL check |
 | `jobs/SETUPDEMO.sh [n] [t] [seed]` | wipe `data/` and load generated data |
 
 Each step has a maximum allowed RC (like `COND=` in JCL); anything higher abends the job. Logs go
@@ -172,7 +199,10 @@ have never been submitted — see `jcl/README.md`.
 | LNEMIPAY | Loan EMI / foreclosure quote and collection with the principal/interest GL split |
 | DEPPAY   | Term deposit payout with TDS and GL entries |
 | DATEUTIL | Add months/days, days between, validation (leap years, month-end clamp) |
-| DEPCALC  | Deposit rate card and FD/RD value (quarterly compounding) |
+| DEPCALC  | Deposit rate (versioned card in force on a date, built-in card until one is set) and FD/RD value (quarterly compounding) |
+| BATCHCTL | Switches ACCTPOST / GLPOST / AUDITLOG / AMLCHK into "keep files open" mode for a batch (14x faster load) |
+| MFUTIL   | Money side of funds and insurance: buy, redeem with exit load, premium with commission |
+| INVUTIL  | Takes a cheque book / card blank out of the branch's stock when it is handed over |
 | CARDUTIL | Luhn check digit/validation, PIN hashing |
 | SECUTIL  | Password hashing and password policy |
 | AUDITLOG | Appends to the audit trail; user and time come from the session, not the caller |
@@ -196,6 +226,13 @@ have never been submitted — see `jcl/README.md`.
 | ACCTREL.DAT  | indexed | account + sequence (00 header, 01-03 holders, 90 nominee) |
 | LOCKMAST.DAT | indexed | locker no |
 | AMLDAY.DAT   | indexed | account + date |
+| FDRATE.DAT   | indexed | effective date + slab upper bound |
+| SWPMAST.DAT  | indexed | account no |
+| INVSTOCK.DAT | indexed | branch + item |
+| CMPMAST.DAT  | indexed | ticket no (from 00000001) |
+| MFSCHEME.DAT, MFHOLD.DAT, MFSIP.DAT | indexed | product code / account + product / SIP no |
+| BRMAST.DAT   | indexed | branch code |
+| INVLOG.DAT, MFTXN.DAT, YRENDLOG.DAT | line sequential, append only | – |
 | GLJRNL.DAT, AMLALERT.DAT, TDSLOG.DAT, LOCKVISIT.DAT | line sequential, append only | – |
 | TRANLOG.DAT  | line sequential, append only | – |
 | AUDITLOG.DAT | line sequential, append only | – |
@@ -209,7 +246,9 @@ Every money movement is a balanced double entry. Chart of accounts: 1001 cash, 1
 1201 loans, 1290 loan repayment suspense, 1301 cheque clearing, 1302 payment settlement, 2101 savings,
 2102 current, 2201 term deposits, 2501 GST payable, 2502 TDS payable, 2900 transfer suspense,
 3001 opening balance control, 4001/4002 loan/OD interest income, 4101 fees, 4102 locker rent,
-5001/5002 savings/term deposit interest paid. GLRPT checks that debits equal credits, that the
+5001/5002 savings/term deposit interest paid; also 1310 inter-branch, 2906 fund / insurance
+collections, 3002 general reserve, 3003 profit and loss, 3004 statutory reserve, 4106 distribution
+commission and 5102 customer compensation (44 accounts in all, see GLPOST). GLRPT checks that debits equal credits, that the
 balance sheet balances, that 1290/2900 are clear and that savings, current, loans and term deposits
 in the GL equal the totals of the detail masters.
 
@@ -221,8 +260,22 @@ in the GL equal the totals of the detail masters.
   overdue instalment; 3+ overdue → NPA
 - **Cards**: 2 live cards per account, daily limit 40,000 default, 10,000 per ATM withdrawal in
   multiples of 100, locked after 3 wrong PINs, 5-year validity
-- **Deposits**: FD min 5,000; RD min 500 (multiple of 100); 6–120 months; 6.5% / 7.0% / 7.25% / 6.75%
-  by tenure, +0.5% senior citizens; premature closure at held-period rate − 1%, none under 7 days
+- **Deposits**: FD min 5,000; RD min 500 (multiple of 100); 6–120 months; built-in card 6.5% / 7.0% /
+  7.25% / 6.75% by tenure, +0.5% senior citizens, until a manager sets a dated card (FDRTMNT: slabs up
+  to 120 months, senior rate 0–1% above general, no back-dating). A deposit keeps the rate of the card
+  in force on its booking day; premature closure at that card's held-period rate − 1%, none under 7 days
+- **Sweep**: threshold at least 25,000, FD unit 5,000+ in thousands, 6–60 months, at most 20 sweep FDs
+  a day per account; sweep FDs cannot be pledged
+- **Overdraft against FD**: current accounts, own live FD only, limit + 90% of the FD (rounded down to
+  100), rate FD + 2%; release only if the overdraft in use fits in the reduced limit
+- **Mutual funds / insurance**: verified KYC needed; high-risk product for a customer aged 60+ needs a
+  recorded risk acknowledgement; SIP 500+ on day 1–28 for 6–360 months; units to 3 decimals; sum
+  assured at least 10 × premium; one policy per plan per account
+- **Complaints**: SLA days ATM 5 (from the transaction date), card / charges / service 7, fraud 10,
+  account 15, loans 21, others 30; failed ATM debit refunded with Rs 100 a day after T+5; goodwill
+  compensation by a manager up to 10,000; overdue tickets escalate one level a day run with 7 more days
+- **Stock**: a branch that stock-controls an item cannot issue it at zero; reorder at the reorder level
+- **Year-end**: 31 March only, once per year and in order; 25% of net profit to statutory reserve
 - **KYC**: 18+, individual PAN (4th char P), only last 4 Aadhaar digits stored, address change resets
   KYC, re-KYC every 2/8/10 years for high/medium/low risk
 - **Charges** (+18% GST): min balance penalty 100/month, SMS 15/quarter, card annual fee 150,
@@ -259,3 +312,8 @@ in the GL equal the totals of the detail masters.
   dual-controlled
 - Regulatory returns are simplified management versions, not the RBI submission formats
 - NACH, CTS, CIBIL and 26AS files use simplified fixed-width layouts (documented in each program)
+- Mutual fund NAVs are keyed in by a manager (no AMC / CAMS feed); units are allotted at the NAV on the
+  day of the debit, not the next business day's NAV
+- Branch accounting is a report over the sub-ledgers and transfer legs; the GL itself is one bank-wide
+  ledger (no branch dimension on GL entries)
+- Year-end closing does not produce a new-year opening file or archive the old year's journal

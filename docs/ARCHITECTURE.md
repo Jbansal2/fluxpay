@@ -56,6 +56,14 @@ graph TD
    accepts it (`APPRVMNT`). Undecided items expire at EOD.
 5. **Everything is audited.** Sign-ons, refusals, rate changes, approvals,
    batch start/end and every master change go to `AUDITLOG`.
+6. **Rates are versioned, not overwritten.** A new deposit rate card is a
+   new set of rows with an effective date (`FDRATE`); a deposit stores the
+   rate it was booked at, and premature closure looks up the card that was
+   in force on the booking day. Cards in force can never be edited.
+7. **Batch speed without breaking online.** Big posting loops switch the
+   posting chain into keep-files-open mode with `BATCHCTL` (an EXTERNAL
+   byte read by ACCTPOST, GLPOST, AUDITLOG and AMLCHK). Online programs
+   never set it, so they keep opening and closing per call.
 
 ## Files
 
@@ -77,23 +85,40 @@ graph LR
     D --> E[CTS returns + credits]
     E --> F[CTS presentation]
     F --> G[Standing instructions]
-    G --> H[EOD: products, dormancy,<br/>loans, deposits, cards]
+    G --> SW[Auto-sweep]
+    SW --> H[EOD: products, dormancy,<br/>loans, deposits, cards]
     H --> I[Repo-linked reset]
     I --> J[Card batch]
     J --> K[Gold revaluation]
     K --> L[Branch cash]
-    K --> K2[Trade finance expiry]
+    K --> MF[SIPs, premiums,<br/>AMC remittance]
+    MF --> K2[Trade finance expiry]
     K2 --> L
     L --> M[Master vs log recon]
     M --> N[GL + sub-ledger recon]
     N --> F2[Fraud rules]
     F2 --> C2[Collections reminders]
-    C2 --> O[MIS]
+    C2 --> ST[Stock reorder]
+    ST --> CM[Complaint escalation]
+    CM --> IB[Inter-branch recon]
+    IB --> O[MIS]
 ```
 
 Month end adds interest, charges, AML (CTR/STR), TDS certificates, CSV
 extract, the credit bureau file, the regulatory returns, IRAC provisioning
-and accrual, customer statements and the audit exception report.
+and accrual, customer statements and the audit exception report. Once a
+year, after the 31 March cycle, `jobs/YEAREND.sh` closes income and expense
+into the P&L account and appropriates the result to the reserves.
+
+## Money that goes to third parties
+
+```mermaid
+graph LR
+    CUST[Customer account] -->|MP / IP debit| COLL[2906 collections<br/>payable to AMC / insurer]
+    COLL -->|MFBATCH remits| SET[1302 settlement]
+    SET -->|MR redemption credit| CUST
+    SET -->|commission receivable| COMM[4106 commission income]
+```
 
 ## The life of a loan
 
@@ -123,7 +148,9 @@ graph LR
 
 ## Known simplifications
 
-* Single currency (INR), single bank code (`CBNK`), no branch-level GL.
+* Single currency (INR), single bank code (`CBNK`). The GL has no branch
+  dimension; branch positions and inter-branch accounts are derived by
+  `BRGLBAT` from the sub-ledgers and the transfer legs.
 * Password hashing is a salted polynomial hash - fine for learning, not for
   production (a real system delegates to RACF/LDAP; the CICS sign-on does).
 * Regulatory returns are simplified management versions, not RBI formats.

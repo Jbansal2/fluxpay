@@ -9,10 +9,12 @@
 #   STEP036  outward cheque returns / deemed-cleared credits
 #   STEP037  outward cheque presentation file
 #   STEP040  standing instructions due today
+#   STEP045  auto-sweep: surplus into FDs, shortfall back from FDs
 #   STEP050  end-of-day batch         (products, dormancy, loans, deposits,
 #                                      cards, daily summary)
 #   STEP052  reset repo-linked loans to the current repo rate
 #   STEP055  credit cards: autopay, late fees, statements
+#   STEP056  mutual fund SIPs, insurance premiums, remittance to AMCs
 #   STEP058  gold loan revaluation / margin calls
 #   STEP058A trade finance expiry / contingent register
 #   STEP059  branch cash position (open / short drawers = RC 4)
@@ -21,6 +23,9 @@
 #            an unbalanced ledger (RC 8) abends the job
 #   STEP075  fraud rules on the day's journal (RC 4 = new alerts)
 #   STEP076  collections reminders / broken promises
+#   STEP077  branch stock reorder (cheque books, card blanks)
+#   STEP078  complaint SLA escalation + monthly complaints return
+#   STEP079  branch positions and inter-branch reconciliation
 #   STEP080  MIS reports
 #
 # Usage: jobs/EODJOB.sh [YYYYMMDD]     (default: today)
@@ -65,6 +70,9 @@ run_step STEP037 CTSOUT 0 "$RUN_DATE"
 # RC 4 = retries, misses or suspensions - reported, not fatal
 run_step STEP040 SIBATCH 4 "$RUN_DATE"
 
+# RC 4 = a sweep posting was refused - reported
+run_step STEP045 SWEEPBAT 4 "$RUN_DATE"
+
 # RC 4 = warnings (e.g. a payout that could not be made)
 run_step STEP050 EODBATCH 4 "$RUN_DATE"
 
@@ -74,6 +82,9 @@ run_step STEP052 LNRESET 4 "$RUN_DATE"
 # RC 4 = autopay failures / margin calls - reported, not fatal
 run_step STEP055 CCBATCH 4 "$RUN_DATE"
 run_step STEP058 GOLDREVL 4 ""
+
+# RC 4 = missed SIPs / unpaid premiums / lapsed policies - reported
+run_step STEP056 MFBATCH 4 "$RUN_DATE"
 
 # RC 4 = a margin could not be returned
 run_step STEP058A TFBATCH 4 "$RUN_DATE"
@@ -90,6 +101,11 @@ run_step STEP070 GLRPT 4
 # RC 4 = new fraud alerts / broken promises - for review, not fatal
 run_step STEP075 FRAUDBAT 4 "$RUN_DATE"
 run_step STEP076 COLLBAT 4 "$RUN_DATE"
+
+# RC 4 = reorders raised / escalations / unmatched inter-branch legs
+run_step STEP077 INVBATCH 4 "$RUN_DATE"
+run_step STEP078 CMPBATCH 4 "$RUN_DATE"
+run_step STEP079 BRGLBAT 4 "$RUN_DATE"
 
 run_step STEP080 MISRPT 0 A
 
