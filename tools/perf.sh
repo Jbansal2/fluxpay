@@ -39,3 +39,5 @@ timed "REGRPT"                       REGRPT "$TODAY"
 timed "CIBILOUT"                     CIBILOUT "$TODAY"
 timed "STMTBAT (SORT, all accounts)" STMTBAT "${TODAY:0:6}"
 timed "DATAUTIL reconcile"           DATAUTIL 4
+timed "BRGLBAT (positions, IB SORT)" BRGLBAT "$TODAY"
+timed "YREND (year-end closing)"      YREND "$(( ${TODAY:0:4} + 1 ))0331"

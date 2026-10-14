@@ -8,21 +8,38 @@ Data: 5000 accounts, 50000 transactions, 1000 loans
 
 | Step                         | Seconds  | RC  |
 |------------------------------|----------|-----|
-| TESTGEN (load)               |    48.72 |   0 |
-| EODBATCH                     |     0.20 |   0 |
+| TESTGEN (load)               |     3.35 |   0 |
+| EODBATCH                     |     0.21 |   0 |
 | INTCALC                      |     0.01 |   4 |
 | GLRPT                        |     0.01 |   0 |
-| FRAUDBAT                     |     0.07 |   4 |
-| PROVBAT                      |     0.01 |   0 |
-| REGRPT                       |     0.10 |   4 |
+| FRAUDBAT                     |     0.08 |   4 |
+| PROVBAT                      |     0.02 |   0 |
+| REGRPT                       |     0.13 |   4 |
 | CIBILOUT                     |     0.01 |   4 |
-| STMTBAT (SORT, all accounts) |     0.24 |   0 |
-| DATAUTIL reconcile           |     0.06 |   0 |
+| STMTBAT (SORT, all accounts) |     1.58 |   0 |
+| DATAUTIL reconcile           |     0.08 |   0 |
+| BRGLBAT (positions, IB SORT) |     0.05 |   0 |
+| YREND (year-end closing)     |     0.01 |   0 |
 
 RC 4 here is a warning, not a failure (interest with nothing new to credit,
 fraud alerts raised, liquidity gaps, loans with incomplete KYC).
 
 ## What was changed because of a measurement
+
+**TESTGEN: 48.7 s -> about 3.4 s (14x).** Every ACCTPOST call used to open
+and close the account master and transaction log, and inside it GLPOST
+(ledger + journal), AUDITLOG and AMLCHK did the same - eight opens and
+closes per posting, ~55,000 postings. There is now a run-unit wide switch
+(copybook BATMODE, an EXTERNAL byte) set through `CALL 'BATCHCTL' USING
+'S'` before a posting loop and `'E'` after it. While it is on, the four
+modules open their files on first use and leave them open; `'E'` makes each
+of them close and flush. Online programs never set it, so they keep the old
+open-per-call behaviour and never meet a file someone else is holding.
+TESTGEN and SWEEPBAT use it. The unit test TBATCHCT checks that 300
+postings in batch mode give the same balance, log and ledger as online
+mode, and that online mode works again afterwards. The rule for a batch
+that switches it on: it must not open ACCTMAST, TRANLOG, GLMAST, GLJRNL or
+AUDITLOG itself between `'S'` and `'E'`.
 
 **FRAUDBAT: 10.8 s -> 0.07 s.** The first version kept per-account state in
 a table searched from the top for every journal entry - 55,000 entries x up
@@ -40,12 +57,10 @@ journal; every statement balances (checked by script over 50 statements).
 
 ## Where the time goes
 
-* **TESTGEN (49 s)** is the only slow step, and it is the postings, not the
-  generator: ~55,000 calls to ACCTPOST at roughly 0.9 ms each. ACCTPOST opens
-  and closes the account master, journal and GL on every call so that the
-  interactive programs, which open the same files themselves, never meet a
-  file held open by someone else. A batch-only "keep files open" mode would
-  cut this sharply; it has not been added because no nightly job posts at
-  that volume.
+* **TESTGEN (~3.4 s)** is still the biggest step: ~55,000 postings at about
+  0.06 ms each now that the files stay open. The rest is record I/O.
+* Timings in this container vary by up to 3x between runs (STMTBAT has
+  measured 0.24 s to 1.6 s on the same data), so compare orders of
+  magnitude, not the second decimal.
 * Everything else is a single sequential pass (or a SORT) and finishes in
   well under a second at this size.

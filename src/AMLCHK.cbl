@@ -60,21 +60,35 @@
        01  WS-PASSTHRU-MIN             PIC 9(13)V99 VALUE 500000.00.
        01  WS-PASSTHRU-PCT             PIC 9V99 VALUE 0.90.
 
+           COPY BATMODE.
+       01  WS-DAY-OPEN-SW              PIC X(01) VALUE 'N'.
+           88  DAY-IS-OPEN                       VALUE 'Y'.
+
        LINKAGE SECTION.
            COPY AMLPARM.
 
        PROCEDURE DIVISION USING AML-PARMS.
        0000-MAIN.
-           OPEN I-O DAY-FILE
-           IF DAY-FS-NOFILE
-               OPEN OUTPUT DAY-FILE
-               CLOSE DAY-FILE
-               OPEN I-O DAY-FILE
-           END-IF
-           IF NOT DAY-FS-OK
-               DISPLAY 'AMLCHK: WARNING - TALLY FILE UNAVAILABLE FS='
-                       WS-DAY-FS
+           IF CB-CLOSE-ALL
+               IF DAY-IS-OPEN
+                   CLOSE DAY-FILE
+                   MOVE 'N' TO WS-DAY-OPEN-SW
+               END-IF
                GOBACK
+           END-IF
+           IF NOT DAY-IS-OPEN
+               OPEN I-O DAY-FILE
+               IF DAY-FS-NOFILE
+                   OPEN OUTPUT DAY-FILE
+                   CLOSE DAY-FILE
+                   OPEN I-O DAY-FILE
+               END-IF
+               IF NOT DAY-FS-OK
+                   DISPLAY 'AMLCHK: WARNING - TALLY FILE UNAVAILABLE'
+                           ' FS=' WS-DAY-FS
+                   GOBACK
+               END-IF
+               SET DAY-IS-OPEN TO TRUE
            END-IF
            PERFORM 1000-LOAD-TALLY
            PERFORM 2000-UPDATE-TALLY
@@ -84,7 +98,10 @@
            ELSE
                REWRITE AMLDAY-RECORD
            END-IF
-           CLOSE DAY-FILE
+           IF NOT CB-KEEP-OPEN
+               CLOSE DAY-FILE
+               MOVE 'N' TO WS-DAY-OPEN-SW
+           END-IF
            GOBACK.
 
        1000-LOAD-TALLY.

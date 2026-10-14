@@ -1,0 +1,141 @@
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TBATCHCT.
+      *================================================================*
+      * UNIT TESTS FOR BATCH KEEP-FILES-OPEN MODE (BATCHCTL): THE SAME *
+      * POSTINGS GIVE THE SAME BALANCES, LOG AND LEDGER AS ONLINE      *
+      * MODE, EVERYTHING IS ON DISK AFTER 'E', AND ONLINE MODE WORKS   *
+      * AGAIN AFTERWARDS                                               *
+      *================================================================*
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT ACCT-FILE ASSIGN TO 'data/ACCTMAST.DAT'
+               ORGANIZATION IS INDEXED ACCESS MODE IS RANDOM
+               RECORD KEY IS ACCT-NO FILE STATUS IS UT-ACCT-FS.
+           SELECT TRAN-FILE ASSIGN TO 'data/TRANLOG.DAT'
+               ORGANIZATION IS LINE SEQUENTIAL
+               FILE STATUS IS WS-TRAN-FS.
+           SELECT GL-FILE ASSIGN TO 'data/GLMAST.DAT'
+               ORGANIZATION IS INDEXED ACCESS MODE IS RANDOM
+               RECORD KEY IS GL-CODE FILE STATUS IS WS-GL-FS.
+       DATA DIVISION.
+       FILE SECTION.
+       FD  ACCT-FILE.
+           COPY ACCTREC.
+       FD  TRAN-FILE.
+           COPY TRANREC.
+       FD  GL-FILE.
+           COPY GLREC.
+       WORKING-STORAGE SECTION.
+           COPY POSTPARM.
+           COPY BATMODE.
+           COPY UTWS.
+           COPY UTSEEDW.
+       01  WS-TRAN-FS                  PIC X(02).
+       01  WS-GL-FS                    PIC X(02).
+       01  WS-I                        PIC 9(04).
+       01  WS-LINES                    PIC 9(05).
+       01  WS-EOF                      PIC X(01).
+
+       PROCEDURE DIVISION.
+       0000-MAIN.
+           MOVE 'BATCHCTL' TO UT-SUITE
+           MOVE 1000000001 TO UT-SEED-NO
+           MOVE 'S' TO UT-SEED-TYPE
+           MOVE 'A' TO UT-SEED-STATUS
+           MOVE 1000 TO UT-SEED-BALANCE UT-SEED-MIN
+           MOVE ZERO TO UT-SEED-OD
+           MOVE 'DEL001' TO UT-SEED-BRANCH
+           PERFORM UT-SEED-ACCOUNT
+
+           CALL 'BATCHCTL' USING 'S'
+           MOVE 'START SETS KEEP-OPEN MODE' TO UT-NAME
+           MOVE 'Y' TO UT-EXPECTED-STR
+           MOVE CB-BATCH-MODE TO UT-ACTUAL-STR
+           PERFORM UT-ASSERT-STR
+
+      *    200 DEPOSITS OF 10 AND 100 WITHDRAWALS OF 5 IN BATCH MODE
+           PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 300
+               INITIALIZE POST-PARMS
+               MOVE 1000000001 TO PP-ACCT-NO
+               MOVE 'UNIT TEST' TO PP-NARRATION
+               IF FUNCTION MOD(WS-I, 3) = 0
+                   SET PP-DEBIT TO TRUE
+                   MOVE 5 TO PP-AMOUNT
+                   MOVE 'WD' TO PP-TRAN-TYPE
+               ELSE
+                   SET PP-CREDIT TO TRUE
+                   MOVE 10 TO PP-AMOUNT
+                   MOVE 'DP' TO PP-TRAN-TYPE
+               END-IF
+               CALL 'ACCTPOST' USING POST-PARMS
+           END-PERFORM
+           MOVE 'BALANCE RETURNED DURING THE BATCH' TO UT-NAME
+           MOVE 2500 TO UT-EXPECTED-NUM
+           MOVE PP-BALANCE TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+           CALL 'BATCHCTL' USING 'E'
+
+           MOVE 'END RETURNS TO ONLINE MODE' TO UT-NAME
+           MOVE 'N' TO UT-EXPECTED-STR
+           MOVE CB-BATCH-MODE TO UT-ACTUAL-STR
+           PERFORM UT-ASSERT-STR
+
+           MOVE 'MASTER ON DISK AFTER END: 1,000 + 2,000 - 500'
+             TO UT-NAME
+           PERFORM UT-READ-ACCOUNT
+           MOVE 2500 TO UT-EXPECTED-NUM
+           MOVE ACCT-BALANCE TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+
+           MOVE 'ALL 300 LOG LINES FLUSHED' TO UT-NAME
+           PERFORM 8000-COUNT-LOG
+           MOVE 300 TO UT-EXPECTED-NUM
+           MOVE WS-LINES TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+
+           MOVE 'LEDGER AGREES WITH THE MASTER' TO UT-NAME
+           OPEN INPUT GL-FILE
+           MOVE 2101 TO GL-CODE
+           READ GL-FILE INVALID KEY MOVE ZERO TO GL-BALANCE END-READ
+           CLOSE GL-FILE
+           MOVE -1500 TO UT-EXPECTED-NUM
+           MOVE GL-BALANCE TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+
+           MOVE 'ONLINE POSTING WORKS AFTER THE BATCH' TO UT-NAME
+           INITIALIZE POST-PARMS
+           SET PP-CREDIT TO TRUE
+           MOVE 1000000001 TO PP-ACCT-NO
+           MOVE 1 TO PP-AMOUNT
+           MOVE 'DP' TO PP-TRAN-TYPE
+           CALL 'ACCTPOST' USING POST-PARMS
+           PERFORM UT-READ-ACCOUNT
+           MOVE 2501 TO UT-EXPECTED-NUM
+           MOVE ACCT-BALANCE TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+
+           MOVE 'END WITHOUT START IS HARMLESS' TO UT-NAME
+           CALL 'BATCHCTL' USING 'E'
+           PERFORM 8000-COUNT-LOG
+           MOVE 301 TO UT-EXPECTED-NUM
+           MOVE WS-LINES TO UT-ACTUAL-NUM
+           PERFORM UT-ASSERT-NUM
+
+           PERFORM UT-FINISH
+           STOP RUN.
+
+       8000-COUNT-LOG.
+           MOVE ZERO TO WS-LINES
+           OPEN INPUT TRAN-FILE
+           MOVE 'N' TO WS-EOF
+           PERFORM UNTIL WS-EOF = 'Y'
+               READ TRAN-FILE
+                   AT END MOVE 'Y' TO WS-EOF
+                   NOT AT END ADD 1 TO WS-LINES
+               END-READ
+           END-PERFORM
+           CLOSE TRAN-FILE.
+
+           COPY UTSEEDP.
+           COPY UTPROC.

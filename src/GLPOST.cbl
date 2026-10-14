@@ -14,6 +14,7 @@
       * MODIFICATION HISTORY                                           *
       * DATE       DESCRIPTION                                         *
       * 2026-10-14 INITIAL VERSION                                     *
+      * 2026-10-14 BATCH KEEP-FILES-OPEN MODE (BATMODE / BATCHCTL)     *
       *================================================================*
        ENVIRONMENT DIVISION.
        INPUT-OUTPUT SECTION.
@@ -86,8 +87,15 @@
            05  FILLER PIC X(35) VALUE '5001EINTEREST PAID - SAVINGS'.
            05  FILLER PIC X(35) VALUE '5002EINTEREST PAID - TERM DEP'.
            05  FILLER PIC X(35) VALUE '5101EPROVISION FOR LOAN LOSSES'.
+           05  FILLER PIC X(35) VALUE '1310AINTER-BRANCH ACCOUNT'.
+           05  FILLER PIC X(35) VALUE '2906LMF / INSURANCE COLLECTIONS'.
+           05  FILLER PIC X(35) VALUE '3002CGENERAL RESERVE'.
+           05  FILLER PIC X(35) VALUE '3003CPROFIT AND LOSS ACCOUNT'.
+           05  FILLER PIC X(35) VALUE '3004CSTATUTORY RESERVE'.
+           05  FILLER PIC X(35) VALUE '4106IMF / INSURANCE COMMISSION'.
+           05  FILLER PIC X(35) VALUE '5102ECUSTOMER COMPENSATION PAID'.
        01  WS-CHART-R REDEFINES WS-CHART.
-           05  WS-COA OCCURS 37 TIMES.
+           05  WS-COA OCCURS 44 TIMES.
                10  COA-CODE            PIC 9(04).
                10  COA-TYPE            PIC X(01).
                10  COA-NAME            PIC X(30).
@@ -95,12 +103,21 @@
        01  WS-WANTED-GL                PIC 9(04).
 
        01  WS-SAVE-DR-REC              PIC X(100).
+           COPY BATMODE.
+       01  WS-GL-OPEN-SW               PIC X(01) VALUE 'N'.
+           88  GL-IS-OPEN                        VALUE 'Y'.
+       01  WS-JRNL-OPEN-SW             PIC X(01) VALUE 'N'.
+           88  JRNL-IS-OPEN                      VALUE 'Y'.
 
        LINKAGE SECTION.
            COPY GLPARM.
 
        PROCEDURE DIVISION USING GL-PARMS.
        0000-MAIN.
+           IF CB-CLOSE-ALL
+               PERFORM 9000-CLOSE-FILES
+               GOBACK
+           END-IF
            SET GP-OK TO TRUE
            IF GP-AMOUNT NOT > ZERO OR GP-DR-GL = GP-CR-GL
                SET GP-BAD-AMOUNT TO TRUE
@@ -122,7 +139,7 @@
            IF NOT GP-OK
                DISPLAY 'GLPOST: UNKNOWN GL IN ENTRY ' GP-DR-GL '/'
                        GP-CR-GL ' REF ' GP-REF
-               CLOSE GL-FILE
+               PERFORM 9100-CLOSE-LEDGER
                GOBACK
            END-IF
 
@@ -147,7 +164,7 @@
                    INVALID KEY SET GP-FILE-ERROR TO TRUE
                END-REWRITE
            END-IF
-           CLOSE GL-FILE
+           PERFORM 9100-CLOSE-LEDGER
            IF NOT GP-OK
                DISPLAY 'GLPOST: SEVERE - LEDGER UPDATE FAILED FS='
                        WS-GL-FS ' REF ' GP-REF
@@ -157,6 +174,9 @@
            GOBACK.
 
        1000-OPEN-LEDGER.
+           IF GL-IS-OPEN
+               EXIT PARAGRAPH
+           END-IF
            OPEN I-O GL-FILE
            IF GL-FS-NOFILE
                PERFORM 1100-SEED-CHART
@@ -165,11 +185,13 @@
            IF NOT GL-FS-OK
                DISPLAY 'GLPOST: LEDGER OPEN FAILED FS=' WS-GL-FS
                SET GP-FILE-ERROR TO TRUE
+           ELSE
+               SET GL-IS-OPEN TO TRUE
            END-IF.
 
        1100-SEED-CHART.
            OPEN OUTPUT GL-FILE
-           PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 37
+           PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 44
                INITIALIZE GL-RECORD
                MOVE COA-CODE(WS-I) TO GL-CODE
                MOVE COA-TYPE(WS-I) TO GL-TYPE
@@ -187,7 +209,7 @@
        1300-OPEN-FROM-CHART.
            MOVE GL-CODE TO WS-WANTED-GL
            SET GP-UNKNOWN-GL TO TRUE
-           PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 37
+           PERFORM VARYING WS-I FROM 1 BY 1 UNTIL WS-I > 44
                IF COA-CODE(WS-I) = WS-WANTED-GL
                    INITIALIZE GL-RECORD
                    MOVE COA-CODE(WS-I) TO GL-CODE
@@ -200,13 +222,16 @@
            END-PERFORM.
 
        2000-WRITE-JOURNAL.
-           OPEN EXTEND JRNL-FILE
-           IF WS-JRNL-FS = '35'
-               OPEN OUTPUT JRNL-FILE
-           END-IF
-           IF WS-JRNL-FS NOT = '00'
-               DISPLAY 'GLPOST: WARNING - JOURNAL UNAVAILABLE'
-               EXIT PARAGRAPH
+           IF NOT JRNL-IS-OPEN
+               OPEN EXTEND JRNL-FILE
+               IF WS-JRNL-FS = '35'
+                   OPEN OUTPUT JRNL-FILE
+               END-IF
+               IF WS-JRNL-FS NOT = '00'
+                   DISPLAY 'GLPOST: WARNING - JOURNAL UNAVAILABLE'
+                   EXIT PARAGRAPH
+               END-IF
+               SET JRNL-IS-OPEN TO TRUE
            END-IF
            MOVE WS-CURR-DATE   TO GJ-DATE
            MOVE WS-CURR-TIME   TO GJ-TIME
@@ -226,4 +251,24 @@
            MOVE GP-CR-GL TO GJ-GL-CODE
            MOVE 'C'      TO GJ-DR-CR
            WRITE GJ-RECORD
-           CLOSE JRNL-FILE.
+           IF NOT CB-KEEP-OPEN
+               CLOSE JRNL-FILE
+               MOVE 'N' TO WS-JRNL-OPEN-SW
+           END-IF.
+
+      *    ONLINE: CLOSE THE LEDGER AFTER EVERY ENTRY. BATCH: KEEP IT.
+       9100-CLOSE-LEDGER.
+           IF GL-IS-OPEN AND NOT CB-KEEP-OPEN
+               CLOSE GL-FILE
+               MOVE 'N' TO WS-GL-OPEN-SW
+           END-IF.
+
+       9000-CLOSE-FILES.
+           IF GL-IS-OPEN
+               CLOSE GL-FILE
+               MOVE 'N' TO WS-GL-OPEN-SW
+           END-IF
+           IF JRNL-IS-OPEN
+               CLOSE JRNL-FILE
+               MOVE 'N' TO WS-JRNL-OPEN-SW
+           END-IF.

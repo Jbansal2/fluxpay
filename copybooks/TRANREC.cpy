@@ -31,9 +31,14 @@
                88  TRAN-TRADE-REFUND             VALUE 'TR'.
                88  TRAN-FX-INWARD                VALUE 'XI'.
                88  TRAN-FX-OUTWARD               VALUE 'XO'.
+               88  TRAN-MF-PURCHASE              VALUE 'MP'.
+               88  TRAN-MF-REDEMPTION            VALUE 'MR'.
+               88  TRAN-INS-PREMIUM              VALUE 'IP'.
+               88  TRAN-COMPENSATION             VALUE 'CM'.
                88  TRAN-CREDIT-TYPE              VALUES 'DP' 'TI'
                                                  'IN' 'LD' 'FM' 'PI'
-                                                 'OC' 'TR' 'XI'.
+                                                 'OC' 'TR' 'XI' 'MR'
+                                                 'CM'.
            05  TRAN-AMOUNT             PIC 9(11)V99.
            05  TRAN-BAL-AFTER          PIC S9(13)V99.
            05  TRAN-REF-ACCT           PIC 9(10).

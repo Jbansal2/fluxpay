@@ -164,12 +164,16 @@
            05  FILLER PIC X(22) VALUE 'TRTRADE FINANCE REFUND'.
            05  FILLER PIC X(22) VALUE 'XIFOREX INWARD        '.
            05  FILLER PIC X(22) VALUE 'XOFOREX OUTWARD       '.
+           05  FILLER PIC X(22) VALUE 'MPMUTUAL FUND PURCHASE'.
+           05  FILLER PIC X(22) VALUE 'MRMUTUAL FUND REDEEMED'.
+           05  FILLER PIC X(22) VALUE 'IPINSURANCE PREMIUM   '.
+           05  FILLER PIC X(22) VALUE 'CMCOMPENSATION PAID   '.
        01  WS-TYPE-TABLE-R REDEFINES WS-TYPE-TABLE.
-           05  WS-TYPE-ENTRY OCCURS 23 TIMES INDEXED BY TYP-IDX.
+           05  WS-TYPE-ENTRY OCCURS 27 TIMES INDEXED BY TYP-IDX.
                10  TYP-CODE            PIC X(02).
                10  TYP-DESC            PIC X(20).
        01  WS-TYPE-TOTALS.
-           05  WS-TYPE-TOT OCCURS 23 TIMES.
+           05  WS-TYPE-TOT OCCURS 27 TIMES.
                10  TT-COUNT            PIC 9(07).
                10  TT-AMOUNT           PIC 9(13)V99.
        01  WS-DAY-CREDITS              PIC 9(13)V99.
@@ -753,7 +757,7 @@
            MOVE 'TYPE                      COUNT              AMOUNT'
                                                  TO WS-RPT-WORK
            PERFORM 8000-EMIT
-           PERFORM VARYING WS-T FROM 1 BY 1 UNTIL WS-T > 23
+           PERFORM VARYING WS-T FROM 1 BY 1 UNTIL WS-T > 27
                IF TT-COUNT(WS-T) > ZERO
                    MOVE TYP-DESC(WS-T)   TO RPT-S-DESC
                    MOVE TT-COUNT(WS-T)   TO RPT-S-COUNT

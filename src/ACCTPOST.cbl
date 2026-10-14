@@ -12,6 +12,8 @@
       *            TRANLOG  (SEQUENTIAL, EXTEND)                       *
       * NOTE     : FILES ARE OPENED AND CLOSED ON EVERY CALL. CALLERS  *
       *            MUST NOT HAVE ACCTMAST OPEN WHEN THEY CALL THIS.    *
+      *            IN BATCH MODE (BATCHCTL 'S') THEY STAY OPEN UNTIL   *
+      *            BATCHCTL 'E'.                                       *
       *----------------------------------------------------------------*
       * MODIFICATION HISTORY                                           *
       * DATE       DESCRIPTION                                         *
@@ -19,6 +21,7 @@
       * 2026-10-14 AUDIT TRAIL ENTRY FOR EVERY POSTING                 *
       * 2026-10-14 GL DOUBLE ENTRY, OVERDRAFT LIMIT, DORMANCY RULES,   *
       *            AML MONITORING HOOK                                 *
+      * 2026-10-14 BATCH KEEP-FILES-OPEN MODE (BATMODE / BATCHCTL)     *
       *================================================================*
        ENVIRONMENT DIVISION.
        INPUT-OUTPUT SECTION.
@@ -52,12 +55,21 @@
        01  WS-AVAILABLE                PIC S9(13)V99 COMP-3.
        01  WS-CUSTOMER-GL              PIC 9(04).
        01  WS-CONTRA-GL                PIC 9(04).
+           COPY BATMODE.
+       01  WS-ACCT-OPEN-SW             PIC X(01) VALUE 'N'.
+           88  ACCT-IS-OPEN                      VALUE 'Y'.
+       01  WS-TRAN-OPEN-SW             PIC X(01) VALUE 'N'.
+           88  TRAN-IS-OPEN                      VALUE 'Y'.
 
        LINKAGE SECTION.
            COPY POSTPARM.
 
        PROCEDURE DIVISION USING POST-PARMS.
        0000-MAIN.
+           IF CB-CLOSE-ALL
+               PERFORM 9000-CLOSE-FILES
+               GOBACK
+           END-IF
            SET PP-OK TO TRUE
            MOVE SPACES TO PP-HOLDER-NAME PP-ACCT-TYPE
            MOVE ZERO   TO PP-BALANCE PP-AVAILABLE
@@ -70,17 +82,22 @@
                GOBACK
            END-IF
 
-           OPEN I-O ACCT-FILE
-           IF NOT ACCT-FS-OK
-               SET PP-FILE-ERROR TO TRUE
-               GOBACK
+           IF NOT ACCT-IS-OPEN
+               OPEN I-O ACCT-FILE
+               IF NOT ACCT-FS-OK
+                   SET PP-FILE-ERROR TO TRUE
+                   GOBACK
+               END-IF
+               SET ACCT-IS-OPEN TO TRUE
            END-IF
 
            PERFORM 1000-READ-ACCOUNT
            IF PP-OK AND NOT PP-INQUIRE
                PERFORM 2000-APPLY-POSTING
            END-IF
-           CLOSE ACCT-FILE
+           IF NOT CB-KEEP-OPEN
+               PERFORM 9000-CLOSE-FILES
+           END-IF
            GOBACK.
 
       *    STATUS RULES:
@@ -153,14 +170,17 @@
            PERFORM 6000-AML-CHECK.
 
        3000-LOG-TRANSACTION.
-           OPEN EXTEND TRAN-FILE
-           IF TRAN-FS-NOFILE
-               OPEN OUTPUT TRAN-FILE
-           END-IF
-           IF NOT TRAN-FS-OK
-               DISPLAY 'ACCTPOST: WARNING - TRAN LOG UNAVAILABLE FS='
-                       WS-TRAN-FS
-               EXIT PARAGRAPH
+           IF NOT TRAN-IS-OPEN
+               OPEN EXTEND TRAN-FILE
+               IF TRAN-FS-NOFILE
+                   OPEN OUTPUT TRAN-FILE
+               END-IF
+               IF NOT TRAN-FS-OK
+                   DISPLAY 'ACCTPOST: WARNING - TRAN LOG UNAVAILABLE'
+                           ' FS=' WS-TRAN-FS
+                   EXIT PARAGRAPH
+               END-IF
+               SET TRAN-IS-OPEN TO TRUE
            END-IF
            ADD 1 TO WS-TRAN-SEQ
            COMPUTE TRAN-ID = WS-CURR-DATE * 10000 + WS-TRAN-SEQ
@@ -172,8 +192,7 @@
            MOVE ACCT-BALANCE  TO TRAN-BAL-AFTER
            MOVE PP-REF-ACCT   TO TRAN-REF-ACCT
            MOVE PP-NARRATION  TO TRAN-NARRATION
-           WRITE TRAN-RECORD
-           CLOSE TRAN-FILE.
+           WRITE TRAN-RECORD.
 
       *    EVERY MONEY MOVEMENT IS ALSO IN THE AUDIT TRAIL WITH THE
       *    SIGNED-ON USER, SO TRANLOG + AUDITLOG CAN BE RECONCILED.
@@ -247,7 +266,11 @@
                WHEN 'XI'
                WHEN 'XO'  MOVE GLC-NOSTRO          TO WS-CONTRA-GL
                WHEN 'PO'
-               WHEN 'PI'  MOVE GLC-PAYMENT-SETTLE  TO WS-CONTRA-GL
+               WHEN 'PI'
+               WHEN 'MR'  MOVE GLC-PAYMENT-SETTLE  TO WS-CONTRA-GL
+               WHEN 'MP'
+               WHEN 'IP'  MOVE GLC-MF-COLLECTIONS  TO WS-CONTRA-GL
+               WHEN 'CM'  MOVE GLC-COMPENSATION-EXP TO WS-CONTRA-GL
                WHEN OTHER MOVE GLC-TRANSFER-SUSP   TO WS-CONTRA-GL
            END-EVALUATE.
 
@@ -261,3 +284,15 @@
            MOVE WS-CURR-TIME  TO AM-TIME
            MOVE ACCT-HOLDER-NAME TO AM-NAME
            CALL 'AMLCHK' USING AML-PARMS.
+
+      *    CLOSES WHAT IS OPEN. ONLINE: AFTER EVERY CALL. BATCH: ONLY
+      *    WHEN BATCHCTL 'E' ENDS THE RUN.
+       9000-CLOSE-FILES.
+           IF ACCT-IS-OPEN
+               CLOSE ACCT-FILE
+               MOVE 'N' TO WS-ACCT-OPEN-SW
+           END-IF
+           IF TRAN-IS-OPEN
+               CLOSE TRAN-FILE
+               MOVE 'N' TO WS-TRAN-OPEN-SW
+           END-IF.

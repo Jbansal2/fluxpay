@@ -31,20 +31,33 @@
            COPY COMMWS.
            COPY SESSION.
        01  WS-AUD-FS                   PIC X(02).
+           COPY BATMODE.
+       01  WS-AUD-OPEN-SW              PIC X(01) VALUE 'N'.
+           88  AUD-IS-OPEN                       VALUE 'Y'.
 
        LINKAGE SECTION.
            COPY AUDPARM.
 
        PROCEDURE DIVISION USING AUD-PARMS.
        0000-MAIN.
-           OPEN EXTEND AUD-FILE
-           IF WS-AUD-FS = '35'
-               OPEN OUTPUT AUD-FILE
-           END-IF
-           IF WS-AUD-FS NOT = '00'
-               DISPLAY 'AUDITLOG: WARNING - AUDIT FILE UNAVAILABLE FS='
-                       WS-AUD-FS
+           IF CB-CLOSE-ALL
+               IF AUD-IS-OPEN
+                   CLOSE AUD-FILE
+                   MOVE 'N' TO WS-AUD-OPEN-SW
+               END-IF
                GOBACK
+           END-IF
+           IF NOT AUD-IS-OPEN
+               OPEN EXTEND AUD-FILE
+               IF WS-AUD-FS = '35'
+                   OPEN OUTPUT AUD-FILE
+               END-IF
+               IF WS-AUD-FS NOT = '00'
+                   DISPLAY 'AUDITLOG: WARNING - AUDIT FILE UNAVAILABLE'
+                           ' FS=' WS-AUD-FS
+                   GOBACK
+               END-IF
+               SET AUD-IS-OPEN TO TRUE
            END-IF
            MOVE FUNCTION CURRENT-DATE TO WS-CURRENT-DT
            MOVE WS-CURR-DATE TO AUD-DATE
@@ -61,5 +74,8 @@
            MOVE AU-KEY     TO AUD-KEY
            MOVE AU-DETAIL  TO AUD-DETAIL
            WRITE AUD-RECORD
-           CLOSE AUD-FILE
+           IF NOT CB-KEEP-OPEN
+               CLOSE AUD-FILE
+               MOVE 'N' TO WS-AUD-OPEN-SW
+           END-IF
            GOBACK.
