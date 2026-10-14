@@ -1,0 +1,42 @@
+# Build the system and run every test on each push / pull request.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    # Ubuntu 22.04 packages GnuCOBOL 3.1.2, the version this was written on
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GnuCOBOL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnucobol3 bc
+          cobc --version | head -1
+
+      - name: Fixed-format check (nothing past column 72)
+        run: |
+          bad=$(awk 'length > 72 { print FILENAME ":" FNR }' \
+                src/*.cbl copybooks/*.cpy tests/unit/*.cbl tests/unit/*.cpy \
+                sql/*.cbl cics/src/*.cbl)
+          if [ -n "$bad" ]; then echo "$bad"; exit 1; fi
+
+      - name: Build
+        run: make -j"$(nproc)"
+
+      - name: Unit tests
+        run: make unit
+
+      - name: End-to-end tests
+        run: ./tests/run_tests.sh
+
+      - name: Generated docs are up to date
+        run: |
+          python3 tools/datadict.py
+          python3 tools/callgraph.py
+          python3 tools/genjcl.py
+          git diff --stat --exit-code docs/ jcl/
