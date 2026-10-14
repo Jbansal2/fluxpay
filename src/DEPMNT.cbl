@@ -13,6 +13,7 @@
       * DATE       DESCRIPTION                                         *
       * 2026-10-14 INITIAL VERSION                                     *
       * 2026-10-14 PAYOUT THROUGH DEPPAY (TDS AND GL)                  *
+      * 2026-10-14 RATE FROM THE VERSIONED CARD IN FORCE TODAY         *
       *================================================================*
        ENVIRONMENT DIVISION.
        INPUT-OUTPUT SECTION.
@@ -148,7 +149,15 @@
            MOVE 'RT'          TO DC-FUNCTION
            MOVE WS-IN-TENURE  TO DC-TENURE
            MOVE WS-IN-SENIOR  TO DC-SENIOR
+           MOVE ZERO          TO DC-AS-OF-DATE
            CALL 'DEPCALC' USING DEPC-PARMS
+           IF DC-RC NOT = ZERO
+               DISPLAY 'NO RATE ON THE CURRENT CARD FOR THIS TENURE.'
+               EXIT PARAGRAPH
+           END-IF
+           IF DC-RATE-EFF-DATE > ZERO
+               DISPLAY 'RATE CARD EFFECTIVE ' DC-RATE-EFF-DATE
+           END-IF
            MOVE DC-RESULT-RATE TO DC-RATE
            MOVE WS-IN-AMOUNT  TO DC-AMOUNT
            MOVE WS-IN-TENURE  TO DC-MONTHS DC-COUNT
@@ -370,8 +379,13 @@
                EXIT PARAGRAPH
            END-IF
            IF DEP-LIEN-LOAN-NO > ZERO
-               DISPLAY 'DEPOSIT IS PLEDGED FOR LOAN ' DEP-LIEN-LOAN-NO
-                       ' - CLOSE THE LOAN FIRST.'
+               IF DEP-LIEN-FOR-OD
+                   DISPLAY 'DEPOSIT SECURES THE OVERDRAFT OF '
+                           DEP-LIEN-LOAN-NO ' - RELEASE IT FIRST.'
+               ELSE
+                   DISPLAY 'DEPOSIT IS PLEDGED FOR LOAN '
+                           DEP-LIEN-LOAN-NO ' - CLOSE THE LOAN FIRST.'
+               END-IF
                EXIT PARAGRAPH
            END-IF
 
@@ -390,6 +404,8 @@
                MOVE 'RT'           TO DC-FUNCTION
                MOVE WS-MONTHS-HELD TO DC-TENURE
                MOVE DEP-SENIOR-FLAG TO DC-SENIOR
+      *        THE CARD THAT WAS IN FORCE WHEN THE DEPOSIT WAS BOOKED
+               MOVE DEP-OPEN-DATE  TO DC-AS-OF-DATE
                CALL 'DEPCALC' USING DEPC-PARMS
                COMPUTE WS-PENAL-RATE = DC-RESULT-RATE - WS-PENALTY-PCT
                IF WS-PENAL-RATE < ZERO

@@ -28,6 +28,13 @@
            05  DEP-TOTAL-DEPOSITED     PIC 9(11)V99 COMP-3.
            05  DEP-PAYOUT-AMT          PIC 9(11)V99 COMP-3.
            05  DEP-CLOSE-DATE          PIC 9(08).
-      *    LOAN NUMBER WHEN THE DEPOSIT IS PLEDGED (ZERO = FREE)
+      *    LIEN HOLDER WHEN THE DEPOSIT IS PLEDGED (ZERO = FREE):
+      *    5XXXXXXXXX = LOAN NO (SECLOAN), 1XXXXXXXXX = CURRENT
+      *    ACCOUNT WHOSE OVERDRAFT IT SECURES (SWEEPMNT)
            05  DEP-LIEN-LOAN-NO        PIC 9(10).
-           05  FILLER                  PIC X(20).
+               88  DEP-LIEN-FOR-OD               VALUES 1000000000
+                                                 THRU 1999999999.
+      *    'Y' = OPENED BY THE AUTO-SWEEP (SWEEPBAT), BROKEN LIFO
+           05  DEP-SWEEP-FLAG          PIC X(01).
+               88  DEP-IS-SWEEP                  VALUE 'Y'.
+           05  FILLER                  PIC X(19).
